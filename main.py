@@ -17,6 +17,9 @@ if __name__ == '__main__':
         private_keys_list: list[str] = [f'0x{row.strip()}' if not row.strip().startswith('0x') else row.strip() for row
                                         in file]
 
+    logger.info(f'Загружено {len(accounts_list)} аккаунтов / {len(proxies_list)} '
+                f'прокси / {len(private_keys_list)} приват-кеев')
+
     formatted_accounts_list: list = [
         {
             'account_token': current_account,
@@ -24,9 +27,6 @@ if __name__ == '__main__':
             'account_private_key': private_keys_list.pop() if private_keys_list else None
         } for current_account in accounts_list
     ]
-
-    logger.info(f'Загружено {len(accounts_list)} аккаунтов / {len(proxies_list)} '
-                f'прокси / {len(private_keys_list)} приват-кеев')
 
     threads: int = int(input('\nThreads: '))
     print()

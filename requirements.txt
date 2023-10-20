@@ -1,0 +1,7 @@
+pyuseragents>=1.0.5
+beautifulsoup4>=4.11.1
+web3>=6.9.0
+requests>=2.31.0
+selenium>=4.14.0
+loguru>=0.7.2
+selenium-wire>=5.1.0

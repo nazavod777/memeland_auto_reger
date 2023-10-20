@@ -247,7 +247,7 @@ def invite_code(meme_session: tls_client.sessions.Session,
     while True:
         r = meme_session.post(url='https://memefarm-api.memecoin.org/user/verify/invite-code',
                               json={
-                                  'code': f'captainz#{(choice(config.ref_codes))}'
+                                  'code': 'captainz#6416'
                               })
 
         if r.json()['status'] == 'verification_failed':

@@ -1,7 +1,8 @@
 from multiprocessing.dummy import Pool
 from random import choice
 
-from core import start_reger
+import config
+from core import start_reger_wrapper
 from utils import logger
 
 if __name__ == '__main__':
@@ -28,11 +29,16 @@ if __name__ == '__main__':
         } for current_account in accounts_list
     ]
 
-    threads: int = int(input('\nThreads: '))
+    if config.CHANGE_PROXY_URL:
+        threads: int = 1
+
+    else:
+        threads: int = int(input('\nThreads: '))
+
     print()
 
     with Pool(processes=threads) as executor:
-        executor.map(start_reger, formatted_accounts_list)
+        executor.map(start_reger_wrapper, formatted_accounts_list)
 
     logger.success('Работа успешно завершена')
     input('\nPress Enter To Exit..')

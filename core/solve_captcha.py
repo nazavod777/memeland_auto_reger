@@ -1,5 +1,7 @@
+from time import sleep
+
 import requests
-import tls_client.sessions
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -42,24 +44,24 @@ def get_task_result(task_id: int | str) -> tuple[bool, str]:
 
 
 class SolveCaptcha:
-    def __init__(self):
-        self.session: tls_client.sessions.Session | None = None
+    def __init__(self,
+                 auth_token: str,
+                 ct0: str):
+        self.auth_token: str = auth_token
+        self.ct0: str = ct0
 
     def interceptor(self,
                     request):
-        for current_cookie in self.session.headers.items():
-            del request.headers[current_cookie[0]]
-            request.headers[current_cookie[0]] = current_cookie[1]
-
         del request.headers['cookie']
-        request.headers['cookie'] = f'auth_token=' + self.session.cookies.get(
-            'auth_token') + '; ct0=' + self.session.cookies.get('ct0')
+        request.headers['cookie'] = f'auth_token=' + self.auth_token + '; ct0=' + self.ct0
+        del request.headers['x-csrf-token']
+        request.headers['x-csrf-token'] = self.ct0
 
     def solve_captcha(self,
-                      session: tls_client.sessions.Session,
-                      account_token: str) -> None:
+                      account_token: str,
+                      proxy: str | None) -> None:
         try:
-            self.session = session
+            captcha_result: str = ''
 
             while True:
                 task_id, response_text = create_task()
@@ -77,11 +79,11 @@ class SolveCaptcha:
                 captcha_result: str = response_text
                 break
 
-            if self.session.proxies:
+            if proxy:
                 options = {
                     'proxy': {
-                        'http': session.proxies['http'],
-                        'https': session.proxies['http'],
+                        'http': proxy,
+                        'https': proxy,
                         'no_proxy': 'localhost,127.0.0.1'
                     }
                 }
@@ -107,10 +109,52 @@ class SolveCaptcha:
             driver.get('https://twitter.com/account/access')
             driver.add_cookie({
                 'name': 'auth_token',
-                'value': self.session.cookies.get('auth_token')
+                'value': self.auth_token
+            })
+            driver.add_cookie({
+                'name': 'ct0',
+                'value': self.ct0
             })
             driver.get('https://twitter.com/account/access')
-            wait.until(EC.element_to_be_clickable((By.ID, 'arkose_iframe')))
+
+            for _ in range(180):
+                try:
+                    element = driver.find_element(By.XPATH,
+                                                  '//input[@type="submit" and contains(@class, "Button EdgeButton EdgeButton--primary")]')
+
+                except NoSuchElementException:
+                    pass
+
+                else:
+                    break
+
+                try:
+                    element = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable((By.ID, 'arkose_iframe'))
+                    )
+
+                except (NoSuchElementException, TimeoutException):
+                    pass
+
+                else:
+                    break
+
+                sleep(1)
+
+            else:
+                logger.error(f'{account_token} | Не удалось дождаться капчи Twitter')
+                return
+
+            if element.get_attribute('value') and element.get_attribute('value') == 'Continue to Twitter':
+                element.click()
+                logger.success(f'{account_token} | Аккаунт успешно разморожен')
+                return
+
+            elif element.get_attribute('value') and element.get_attribute('value') == 'Start':
+                element.click()
+                driver.get('https://twitter.com/account/access')
+                wait.until(EC.element_to_be_clickable((By.ID, 'arkose_iframe')))
+
             driver.switch_to.frame(driver.find_element(By.ID, 'arkose_iframe'))
             driver.execute_script(
                 'parent.postMessage(JSON.stringify({eventId:"challenge-complete",payload:{sessionToken:"' + captcha_result + '"}}),"*")')

@@ -1,11 +1,18 @@
-from urllib.parse import unquote
-from json.decoder import JSONDecodeError
+import asyncio
 from random import choice
 from time import sleep
 from urllib.parse import urlparse, parse_qs
 
+import aiofiles
+import aiohttp
+import aiohttp.client
+import better_automation.twitter.api
+import better_automation.twitter.errors
 import eth_account.signers.local
+import requests
 import tls_client.sessions
+from aiohttp_socks import ProxyConnector
+from better_automation import TwitterAPI
 from bs4 import BeautifulSoup
 from eth_account.messages import encode_defunct
 from web3.auto import w3
@@ -14,7 +21,6 @@ import config
 from utils import check_empty_value
 from utils import generate_eth_account, get_account
 from utils import logger
-from .get_session import get_session, get_meme_session
 from .solve_captcha import SolveCaptcha
 
 
@@ -26,474 +32,464 @@ class AccountSuspended(BaseException):
     pass
 
 
-def get_tasks(session: tls_client.sessions.Session) -> dict:
-    r = session.get(url='https://memefarm-api.memecoin.org/user/tasks',
-                    headers={
-                        **session.headers,
-                        'content-type': None
-                    })
-
-    return r.json()
-
-
-def get_twitter_account_names(session: tls_client.sessions.Session) -> tuple[str, str]:
-    r = session.get(url='https://memefarm-api.memecoin.org/user/info',
-                    headers={
-                        **session.headers,
-                        'content-type': None
-                    })
-
-    return r.json()['twitter']['username'], r.json()['twitter']['name']
-
-
-def link_wallet_request(session: tls_client.sessions.Session,
-                        address: str,
-                        sign: str,
-                        message: str,
-                        account_token: str) -> tuple[bool, str]:
-    while True:
-        r = session.post(url='https://memefarm-api.memecoin.org/user/verify/link-wallet',
-                         json={
-                             'address': address,
-                             'delegate': address,
-                             'message': message,
-                             'signature': sign
-                         })
-
-        if r.json()['status'] == 'verification_failed':
-            logger.info(f'{account_token} | Verification Failed, пробую еще раз')
-            sleep(5)
-            continue
-
-        elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
-            logger.error(f'{account_token} | Unauthorized')
-            raise Unauthorized()
-
-        return r.json()['status'] == 'success', r.text
-
-
-def link_wallet(session: tls_client.sessions.Session,
-                account: eth_account.signers.local.LocalAccount,
-                account_token: str,
-                twitter_username: str) -> tuple[bool, str]:
-    message_to_sign: str = f'This wallet willl be dropped $MEME from your harvested MEMEPOINTS. ' \
-                           'If you referred friends, family, lovers or strangers, ' \
-                           'ensure this wallet has the NFT you referred.\n\n' \
-                           'But also...\n\n' \
-                           'Never gonna give you up\n' \
-                           'Never gonna let you down\n' \
-                           'Never gonna run around and desert you\n' \
-                           'Never gonna make you cry\n' \
-                           'Never gonna say goodbye\n' \
-                           'Never gonna tell a lie and hurt you", "\n\n' \
-                           f'Wallet: {account.address[:5]}...{account.address[-4:]}\n' \
-                           f'X account: @{twitter_username}'
-
-    sign = w3.eth.account.sign_message(encode_defunct(text=message_to_sign),
-                                       private_key=account.key).signature.hex()
-
-    return link_wallet_request(session=session,
-                               address=account.address,
-                               sign=sign,
-                               message=message_to_sign,
-                               account_token=account_token)
-
-
-def change_twitter_name(twitter_session: tls_client.sessions.Session,
-                        twitter_account_name: str,
-                        account_token: str) -> tuple[bool, str]:
-    r = twitter_session.post(url='https://api.twitter.com/1.1/account/update_profile.json',
-                             data={
-                                 'name': f'{twitter_account_name} ❤️ Memecoin'
-                             })
-
-    if 'This account is suspended' in r.text:
-        raise AccountSuspended(account_token)
-
-    if r.status_code == 200:
-        return True, r.text
-
-    return False, r.text
-
-
-def twitter_name(twitter_session: tls_client.sessions.Session,
-                 meme_session: tls_client.sessions.Session,
-                 account_token: str,
-                 twitter_account_name: str) -> tuple[bool, str]:
-    if '❤️ Memecoin' not in twitter_account_name:
-        change_twitter_name_result, response_text = change_twitter_name(twitter_session=twitter_session,
-                                                                        twitter_account_name=twitter_account_name,
-                                                                        account_token=account_token)
-
-        if not change_twitter_name_result:
-            logger.error(f'{account_token} | Не удалось изменить имя пользователя')
-            return False, response_text
-
-    while True:
-        r = meme_session.post(url='https://memefarm-api.memecoin.org/user/verify/twitter-name',
-                              headers={
-                                  **meme_session.headers,
-                                  'content-type': None
-                              })
-
-        if r.json()['status'] == 'verification_failed':
-            logger.info(f'{account_token} | Verification Failed, пробую еще раз')
-            sleep(5)
-            continue
-
-        elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
-            logger.error(f'{account_token} | Unauthorized')
-            raise Unauthorized()
-
-        return r.json()['status'] == 'success', r.text
-
-
-def create_tweet(twitter_session: tls_client.sessions.Session,
-                 twitter_username: str,
-                 account_token: str) -> tuple[bool, str]:
-    r = twitter_session.post(url='https://twitter.com/i/api/graphql/5V_dkq1jfalfiFOEZ4g47A/CreateTweet',
-                             json={
-                                 'variables':
-                                     {
-                                         'tweet_text': f'Hi, my name is @{twitter_username}, and I’m a $MEME (@Memecoin) farmer '
-                                                       'at @Memeland.\n\nOn my honor, I promise that I will do my best '
-                                                       'to do my duty to my own bag, and to farm #MEMEPOINTS at '
-                                                       'all times.\n\nIt ain’t much, but it’s honest work. 🧑‍🌾 ',
-                                         'dark_request': False,
-                                         'media':
-                                             {
-                                                 'media_entities': [],
-                                                 'possibly_sensitive': False
-                                             },
-                                         'semantic_annotation_ids': [
-
-                                         ]
-                                     },
-                                 'features':
-                                     {
-                                         'c9s_tweet_anatomy_moderator_badge_enabled': True,
-                                         'tweetypie_unmention_optimization_enabled': True,
-                                         'responsive_web_edit_tweet_api_enabled': True,
-                                         'graphql_is_translatable_rweb_tweet_is_translatable_enabled': True,
-                                         'view_counts_everywhere_api_enabled': True,
-                                         'longform_notetweets_consumption_enabled': True,
-                                         'responsive_web_twitter_article_tweet_consumption_enabled': False,
-                                         'tweet_awards_web_tipping_enabled': False,
-                                         'responsive_web_home_pinned_timelines_enabled': True,
-                                         'longform_notetweets_rich_text_read_enabled': True,
-                                         'longform_notetweets_inline_media_enabled': True,
-                                         'responsive_web_graphql_exclude_directive_enabled': True,
-                                         'verified_phone_label_enabled': False,
-                                         'freedom_of_speech_not_reach_fetch_enabled': True,
-                                         'standardized_nudges_misinfo': True,
-                                         'tweet_with_visibility_results_prefer_gql_limited_actions_policy_enabled': True,
-                                         'responsive_web_media_download_video_enabled': False,
-                                         'responsive_web_graphql_skip_user_profile_image_extensions_enabled': False,
-                                         'responsive_web_graphql_timeline_navigation_enabled': True,
-                                         'responsive_web_enhance_cards_enabled': False
-                                     },
-                                 "queryId": "5V_dkq1jfalfiFOEZ4g47A"},
-                             headers={
-                                 **twitter_session.headers,
-                                 'content-type': 'application/json'
-                             })
-
-    if r.json().get('errors'):
-        for current_error in r.json()['errors']:
-            if current_error['message'] == 'This request requires a matching csrf cookie and header.':
-                raise Unauthorized()
-
-    if 'This account is suspended' in r.text:
-        raise AccountSuspended(account_token)
-
-    if r.status_code == 200:
-        return True, r.text
-
-    return False, r.text
-
-
-def share_message(twitter_session: tls_client.sessions.Session,
-                  meme_session: tls_client.sessions.Session,
-                  twitter_username: str,
-                  account_token: str) -> tuple[bool, str]:
-    create_tweet_status, response_text = create_tweet(twitter_session=twitter_session,
-                                                      twitter_username=twitter_username,
-                                                      account_token=account_token)
-
-    if not create_tweet_status:
-        return False, response_text
-
-    while True:
-        r = meme_session.post(url='https://memefarm-api.memecoin.org/user/verify/share-message',
-                              headers={
-                                  **meme_session.headers,
-                                  'content-type': None
-                              })
-
-        if r.json()['status'] == 'verification_failed':
-            logger.info(f'{account_token} | Verification Failed, пробую еще раз')
-            sleep(5)
-            continue
-
-        elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
-            logger.error(f'{account_token} | Unauthorized')
-            raise Unauthorized()
-
-        return r.json()['status'] == 'success', r.text
-
-
-def invite_code(meme_session: tls_client.sessions.Session,
-                account_token: str) -> tuple[bool, str]:
-    while True:
-        r = meme_session.post(url='https://memefarm-api.memecoin.org/user/verify/invite-code',
-                              json={
-                                  'code': 'captainz#6416'
-                              })
-
-        if r.json()['status'] == 'verification_failed':
-            logger.info(f'{account_token} | Verification Failed, пробую еще раз')
-            sleep(5)
-            continue
-
-        elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
-            logger.error(f'{account_token} | Unauthorized')
-            raise Unauthorized()
-
-        return r.json()['status'] == 'success', r.text
-
-
-def get_oauth_token(session: tls_client.sessions.Session) -> tuple[None | str, str]:
-    while True:
-        r = session.get(url='https://memefarm-api.memecoin.org/user/twitter-auth1',
-                        params={
-                            'callback': 'https://www.memecoin.org/farming'
-                        })
-
-        if not r.headers.get('Location'):
-            return None, r.text
-
-        oauth_token: str = r.headers.get('Location').split('?oauth_token=')[-1]
-
-        return oauth_token, r.text
-
-
-def get_auth_token(session: tls_client.sessions.Session,
-                   oauth_token: str,
-                   account_token: str) -> tuple[str | bool, str]:
-    while True:
-        r = session.get(url='https://api.twitter.com/oauth/authenticate',
-                        params={
-                            'oauth_token': oauth_token
-                        })
-
-        if 'This account is suspended' in r.text:
-            raise AccountSuspended(account_token)
-
-        if 'Redirecting you back to the application' in r.text and r.text.rstrip().replace('\n', '').startswith(
-                '<?xml version='):
-            return r.text.split("<p>If your browser doesn't redirect you please <a href=\"")[-1].split('"')[0].replace(
-                '&amp;', '&'), r.text
-
-        if r.headers.get('Location') == 'https://twitter.com/account/access':
-            logger.info(f'{account_token} | Обнаружена заморозка аккаунта, пробую разморозить')
-            SolveCaptcha().solve_captcha(session=session,
-                                         account_token=account_token)
-            continue
-
-        auth_token_element = BeautifulSoup(r.text, 'html.parser').find('input', {
-            'name': 'authenticity_token'
-        })
-
-        if not auth_token_element:
-            return False, r.text
-
-        auth_token: str = auth_token_element.get('value')
-
-        return auth_token, r.text
-
-
-def make_auth(session: tls_client.sessions.Session,
-              oauth_token: str,
-              auth_token: str,
-              account_token: str) -> tuple[str | bool, str]:
-    while True:
-        r = session.post(url='https://api.twitter.com/oauth/authorize',
-                         data={
-                             'authenticity_token': auth_token,
-                             'redirect_after_login': f'https://api.twitter.com/oauth/authorize?oauth_token={oauth_token}',
-                             'oauth_token': oauth_token
-                         })
-
-        if 'This account is suspended' in r.text:
-            raise AccountSuspended(account_token)
-
-        if 'Redirecting you back to the application' in r.text and r.text.rstrip().replace('\n', '').startswith(
-                '<?xml version='):
-            return r.text.split("<p>If your browser doesn't redirect you please <a href=\"")[-1].split('"')[0].replace(
-                '&amp;', '&'), r.text
-
-        if r.text.startswith('<html><body>You are being <a href="'):
-            return unquote(r.text.split('<html><body>You are being <a href="')[-1].split('"')[0]), r.text
-
-        location_html = BeautifulSoup(r.text, 'html.parser').find('a', {
-            'class': 'maintain-context'
-        })
-
-        if not location_html:
-            return False, r.text
-
-        location: str = location_html.get('href')
-
-        return location, r.text
-
-
-def start_reger(source_data: dict) -> None:
-    account_token: str = source_data['account_token']
-    account_proxy: str | None = source_data['account_proxy']
-    account_private_key: str | None = source_data['account_private_key']
-
-    while True:
-        try:
-            twitter_session: tls_client.sessions.Session = get_session(account_token=account_token,
-                                                                       account_proxy=account_proxy)
-
-            oauth_token, response_text = get_oauth_token(session=twitter_session)
-
-            if not check_empty_value(value=oauth_token,
-                                     account_token=account_token):
-                logger.error(f'{account_token} | Ошибка при получении OAuth Token, ответ: {response_text}')
-                return
-
-            auth_token, response_text = get_auth_token(session=twitter_session,
-                                                       oauth_token=oauth_token,
-                                                       account_token=account_token)
-
-            if not check_empty_value(value=auth_token,
-                                     account_token=account_token):
-                logger.error(f'{account_token} | Ошибка при получении Auth Token, ответ: {response_text}')
-                return
-
-            location, response_text = make_auth(session=twitter_session,
-                                                oauth_token=oauth_token,
-                                                auth_token=auth_token,
-                                                account_token=account_token)
-
-            if not check_empty_value(value=location,
-                                     account_token=account_token):
-                logger.error(f'{account_token} | Ошибка при авторизации через Twitter, ответ: {response_text}')
-                return
-
-            if parse_qs(urlparse(location).query).get('redirect_after_login') \
-                    or not parse_qs(urlparse(location).query).get('oauth_token') \
-                    or not parse_qs(urlparse(location).query).get('oauth_verifier'):
+class Reger:
+    def __init__(self,
+                 source_data: dict) -> None:
+        self.account_token: str = source_data['account_token']
+        self.account_proxy: str | None = source_data['account_proxy']
+        self.account_private_key: str | None = source_data['account_private_key']
+
+        self.twitter_client: better_automation.twitter.api.TwitterAPI | None = None
+        self.meme_client: tls_client.sessions.Session | None = None
+
+    def get_tasks(self) -> dict:
+        r = self.meme_client.get(url='https://memefarm-api.memecoin.org/user/tasks',
+                                 headers={
+                                     **self.meme_client.headers,
+                                     'content-type': ''
+                                 })
+
+        return r.json()
+
+    def get_twitter_account_names(self) -> tuple[str, str]:
+        r = self.meme_client.get(url='https://memefarm-api.memecoin.org/user/info',
+                                 headers={
+                                     **self.meme_client.headers,
+                                     'content-type': ''
+                                 })
+
+        return r.json()['twitter']['username'], r.json()['twitter']['name']
+
+    def link_wallet_request(self,
+                            address: str,
+                            sign: str,
+                            message: str) -> tuple[bool, str]:
+        while True:
+            r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/link-wallet',
+                                      json={
+                                          'address': address,
+                                          'delegate': address,
+                                          'message': message,
+                                          'signature': sign
+                                      })
+
+            if r.json()['status'] == 'verification_failed':
+                logger.info(f'{self.account_token} | Verification Failed, пробую еще раз')
+                sleep(5)
                 continue
 
-            oauth_token: str = parse_qs(urlparse(location).query)['oauth_token'][0]
-            oauth_verifier: str = parse_qs(urlparse(location).query)['oauth_verifier'][0]
+            elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                logger.error(f'{self.account_token} | Unauthorized')
+                raise Unauthorized()
 
-            meme_session: tls_client.sessions.Session = get_meme_session(account_proxy=account_proxy)
+            return r.json()['status'] == 'success', r.text
 
-            r = meme_session.post(url='https://memefarm-api.memecoin.org/user/twitter-auth1',
+    def link_wallet(self,
+                    account: eth_account.signers.local.LocalAccount,
+                    twitter_username: str) -> tuple[bool, str]:
+        message_to_sign: str = f'This wallet willl be dropped $MEME from your harvested MEMEPOINTS. ' \
+                               'If you referred friends, family, lovers or strangers, ' \
+                               'ensure this wallet has the NFT you referred.\n\n' \
+                               'But also...\n\n' \
+                               'Never gonna give you up\n' \
+                               'Never gonna let you down\n' \
+                               'Never gonna run around and desert you\n' \
+                               'Never gonna make you cry\n' \
+                               'Never gonna say goodbye\n' \
+                               'Never gonna tell a lie and hurt you", "\n\n' \
+                               f'Wallet: {account.address[:5]}...{account.address[-4:]}\n' \
+                               f'X account: @{twitter_username}'
+
+        sign = w3.eth.account.sign_message(encode_defunct(text=message_to_sign),
+                                           private_key=account.key).signature.hex()
+
+        return self.link_wallet_request(address=account.address,
+                                        sign=sign,
+                                        message=message_to_sign)
+
+    async def change_twitter_name(self,
+                                  twitter_account_name: str) -> tuple[bool, str]:
+        r = await self.twitter_client.request(url='https://api.twitter.com/1.1/account/update_profile.json',
+                                              method='post',
+                                              data={
+                                                  'name': f'{twitter_account_name} ❤️ Memecoin'
+                                              })
+
+        if 'This account is suspended' in await r[0].text():
+            raise AccountSuspended(self.account_token)
+
+        if r[0].status == 200:
+            return True, await r[0].text()
+
+        return False, await r[0].text()
+
+    async def twitter_name(self,
+                           twitter_account_name: str) -> tuple[bool, str]:
+        if '❤️ Memecoin' not in twitter_account_name:
+            change_twitter_name_result, response_text = await self.change_twitter_name(
+                twitter_account_name=twitter_account_name)
+
+            if not change_twitter_name_result:
+                logger.error(f'{self.account_token} | Не удалось изменить имя пользователя')
+                return False, response_text
+
+        while True:
+            r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/twitter-name',
+                                      headers={
+                                          **self.meme_client.headers,
+                                          'content-type': ''
+                                      })
+
+            if r.json()['status'] == 'verification_failed':
+                logger.info(f'{self.account_token} | Verification Failed, пробую еще раз')
+                sleep(5)
+                continue
+
+            elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                raise Unauthorized()
+
+            return r.json()['status'] == 'success', r.text
+
+    async def create_tweet(self,
+                           twitter_username: str, ) -> tuple[bool, str]:
+        r = await self.twitter_client.tweet(
+            text=f'Hi, my name is @{twitter_username}, and I’m a $MEME (@Memecoin) farmer '
+                 'at @Memeland.\n\nOn my honor, I promise that I will do my best '
+                 'to do my duty to my own bag, and to farm #MEMEPOINTS at '
+                 'all times.\n\nIt ain’t much, but it’s honest work. 🧑‍🌾 ')
+
+        return True, str(r)
+
+    async def share_message(self,
+                            twitter_username: str, ) -> tuple[bool, str]:
+        create_tweet_status, tweet_id = await self.create_tweet(twitter_username=twitter_username)
+
+        if not create_tweet_status:
+            return False, tweet_id
+
+        while True:
+            r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/share-message',
+                                      headers={
+                                          **self.meme_client.headers,
+                                          'content-type': ''
+                                      })
+
+            if r.json()['status'] == 'verification_failed':
+                logger.info(f'{self.account_token} | Verification Failed, пробую еще раз')
+                sleep(5)
+                continue
+
+            elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                raise Unauthorized()
+
+            return r.json()['status'] == 'success', r.text
+
+    def invite_code(self) -> tuple[bool, str]:
+        while True:
+            r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/invite-code',
+                                      json={
+                                          'code': 'captainz#6416'
+                                      })
+
+            if r.json()['status'] == 'verification_failed':
+                logger.info(f'{self.account_token} | Verification Failed, пробую еще раз')
+                sleep(5)
+                continue
+
+            elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                raise Unauthorized()
+
+            return r.json()['status'] == 'success', r.text
+
+    async def follow_quest(self,
+                           username: str,
+                           follow_id: str):
+        await self.twitter_client.follow(user_id=await self.twitter_client.request_user_id(username=username))
+
+        r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/twitter-follow',
                                   json={
-                                      'oauth_token': oauth_token,
-                                      'oauth_verifier': oauth_verifier
+                                      'followId': follow_id
                                   })
 
-            try:
-                access_token: str = r.json()['accessToken']
+        return r.json()['status'] == 'success', r.text
 
-            except (JSONDecodeError, KeyError, ValueError):
-                logger.error(f'{account_token} | Ошибка при авторизации MEME: {r.text}')
+    async def get_oauth_auth_tokens(self) -> tuple[str | None, str | None, str | None, str]:
+        while True:
+            headers: dict = self.twitter_client._headers
 
-                check_empty_value(value='',
-                                  account_token=account_token)
-                return
+            if headers.get('content-type'):
+                del headers['content-type']
 
-            meme_session.headers.update({
-                'authorization': f'Bearer {access_token}'
+            headers[
+                'accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'
+
+            if not self.twitter_client.ct0:
+                self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
+
+            while True:
+                try:
+                    r = await self.twitter_client.request(url='https://memefarm-api.memecoin.org/user/twitter-auth',
+                                                          method='get',
+                                                          params={
+                                                              'callback': 'https://www.memecoin.org/farming'
+                                                          },
+                                                          headers=headers)
+
+                except better_automation.twitter.errors.BadRequest as error:
+                    logger.error(f'{self.account_token} | BadRequest: {error}, пробую еще раз')
+
+                else:
+                    break
+
+            if BeautifulSoup(await r[0].text(), 'lxml').find('iframe', {
+                'id': 'arkose_iframe'
+            }):
+                logger.info(f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
+
+                SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                             ct0=self.twitter_client.ct0).solve_captcha(proxy=self.account_proxy,
+                                                                        account_token=self.account_token)
+                continue
+
+            if 'https://www.memecoin.org/farming?oauth_token=' in (await r[0].text()):
+                return 'https://www.memecoin.org/farming?oauth_token=' + \
+                       (await r[0].text()).split('https://www.memecoin.org/farming?oauth_token=')[-1].split('"')[
+                           0].replace('&amp;', '&'), None, None, await r[0].text()
+
+            auth_token_html = BeautifulSoup(await r[0].text(), 'lxml').find('input', {
+                'name': 'authenticity_token'
+            })
+            oauth_token_html = BeautifulSoup(await r[0].text(), 'lxml').find('input', {
+                'name': 'oauth_token'
             })
 
-            if not account_private_key:
-                account: eth_account.signers.local.LocalAccount = generate_eth_account()
+            if not auth_token_html or not oauth_token_html:
+                logger.error(f'{self.account_token} | Не удалось обнаружить Auth/OAuth Token на странице, '
+                             f'пробую еще раз, ответ: {await r[0].text()}')
+                continue
 
-            else:
-                account: eth_account.signers.local.LocalAccount = get_account(private_key=account_private_key)
+            auth_token: str = auth_token_html.get('value', '')
+            oauth_token: str = oauth_token_html.get('value', '')
 
-            tasks_dict: dict = get_tasks(session=meme_session)
-            twitter_username, twitter_account_name = get_twitter_account_names(session=meme_session)
+            return None, auth_token, oauth_token, await r[0].text()
 
-            for current_task in tasks_dict['tasks']:
-                if current_task['completed']:
-                    continue
+    async def make_auth(self,
+                        oauth_token: str,
+                        auth_token: str) -> tuple[str | bool, str]:
+        while True:
+            if not self.twitter_client.ct0:
+                self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
 
-                match current_task['id']:
-                    case 'connect':
+            r = await self.twitter_client.request(url='https://api.twitter.com/oauth/authorize',
+                                                  method='post',
+                                                  data={
+                                                      'authenticity_token': auth_token,
+                                                      'redirect_after_login': f'https://api.twitter.com/oauth/authorize?oauth_token={oauth_token}',
+                                                      'oauth_token': oauth_token
+                                                  },
+                                                  headers={
+                                                      **self.twitter_client._headers,
+                                                      'content-type': 'application/x-www-form-urlencoded'
+                                                  })
+
+            if 'This account is suspended' in await r[0].text():
+                raise AccountSuspended(self.account_token)
+
+            if 'https://www.memecoin.org/farming?oauth_token=' in await r[0].text():
+                location: str = 'https://www.memecoin.org/farming?oauth_token=' + \
+                                (await r[0].text()).split('https://www.memecoin.org/farming?oauth_token=')[-1].split(
+                                    '"')[0].replace('&amp;', '&')
+
+                return location, await r[0].text()
+
+            return False, await r[0].text()
+
+    async def start_reger(self) -> None:
+        while True:
+            try:
+                async with aiohttp.ClientSession(
+                        connector=ProxyConnector.from_url(
+                            url=self.account_proxy) if self.account_proxy else None) as aiohttp_twitter_session:
+                    self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
+                        session=aiohttp_twitter_session,
+                        auth_token=self.account_token)
+
+                    if not self.twitter_client.ct0:
+                        self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
+
+                    location, auth_token, oauth_token, response_text = await self.get_oauth_auth_tokens()
+
+                    if not location:
+                        if not check_empty_value(value=auth_token,
+                                                 account_token=self.account_token) or not check_empty_value(
+                            value=oauth_token,
+                            account_token=self.account_token):
+                            logger.error(
+                                f'{self.account_token} | Ошибка при получении OAuth / Auth Token, ответ: {response_text}')
+                            return
+
+                        location, response_text = await self.make_auth(oauth_token=oauth_token,
+                                                                       auth_token=auth_token)
+
+                        if not check_empty_value(value=location,
+                                                 account_token=self.account_token):
+                            logger.error(
+                                f'{self.account_token} | Ошибка при авторизации через Twitter, ответ: {response_text}')
+                            return
+
+                    if parse_qs(urlparse(location).query).get('redirect_after_login') \
+                            or not parse_qs(urlparse(location).query).get('oauth_token') \
+                            or not parse_qs(urlparse(location).query).get('oauth_verifier'):
+                        logger.error(
+                            f'{self.account_token} | Не удалось обнаружить OAuth Token / OAuth Verifier в ссылке: {location}')
                         continue
 
-                    case 'linkWallet':
-                        link_wallet_result, response_text = link_wallet(session=meme_session,
-                                                                        account=account,
-                                                                        account_token=account_token,
-                                                                        twitter_username=twitter_username)
+                    oauth_token: str = parse_qs(urlparse(location).query)['oauth_token'][0]
+                    oauth_verifier: str = parse_qs(urlparse(location).query)['oauth_verifier'][0]
+                    access_token: str = ''
 
-                        if link_wallet_result:
-                            logger.success(f'{account_token} | Успешно привязал кошелек')
+                    while True:
+                        self.meme_client = tls_client.Session(client_identifier=choice([
+                            'Chrome110',
+                            'chrome111',
+                            'chrome112'
+                        ]))
+                        self.meme_client.headers.update({
+                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+                            'accept': 'application/json',
+                            'accept-language': 'ru,en;q=0.9,vi;q=0.8,es;q=0.7,cy;q=0.6',
+                            'content-type': 'application/json',
+                            'origin': 'https://www.memecoin.org',
+                            'referer': 'https://www.memecoin.org/'
+                        })
 
-                        else:
-                            logger.error(f'{account_token} | Не удалось привязать кошелек, ответ: {response_text}')
+                        r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/twitter-auth1',
+                                                  json={
+                                                      'oauth_token': oauth_token,
+                                                      'oauth_verifier': oauth_verifier
+                                                  })
 
-                    case 'twitterName':
-                        twitter_username_result, response_text = twitter_name(twitter_session=twitter_session,
-                                                                              meme_session=meme_session,
-                                                                              account_token=account_token,
-                                                                              twitter_account_name=twitter_account_name)
+                        if r.json().get('error', '') == 'account_too_new':
+                            logger.error(f'{self.account_token} | Account Too New')
 
-                        if twitter_username_result:
-                            logger.success(f'{account_token} | Успешно получил бонус за MEMELAND в никнейме')
+                            continue
 
-                        else:
-                            logger.error(f'{account_token} | Не удалось получить бонус за MEMELAND в '
-                                         f'никнейме, ответ: {response_text}')
+                        access_token: str = r.json().get('accessToken', '')
 
-                    case 'shareMessage':
-                        share_message_result, response_text = share_message(twitter_session=twitter_session,
-                                                                            meme_session=meme_session,
-                                                                            twitter_username=twitter_username,
-                                                                            account_token=account_token)
+                        if not access_token:
+                            logger.error(
+                                f'{self.account_token} | Не удалось обнаружить Access Token в ответе, пробую еще раз, ответ: {r.text}')
+                            continue
 
-                        if share_message_result:
-                            logger.success(f'{account_token} | Успешно получил бонус за твит')
+                        break
 
-                        else:
-                            logger.error(f'{account_token} | Не удалось создать твит, ответ: {response_text}')
+                    self.meme_client.headers.update({
+                        'authorization': f'Bearer {access_token}'
+                    })
 
-                    case 'inviteCode':
-                        invite_code_result, response_text = invite_code(meme_session=meme_session,
-                                                                        account_token=account_token)
+                    if not self.account_private_key:
+                        account: eth_account.signers.local.LocalAccount = generate_eth_account()
 
-                        if invite_code_result:
-                            logger.success(f'{account_token} | Успешно ввел реф.код')
+                    else:
+                        account: eth_account.signers.local.LocalAccount = get_account(
+                            private_key=self.account_private_key)
 
-                        else:
-                            logger.error(f'{account_token} | Не удалось ввести реф.код, ответ: {r.text}')
+                    tasks_dict: dict = self.get_tasks()
+                    twitter_username, twitter_account_name = self.get_twitter_account_names()
 
-        except Unauthorized:
-            continue
+                    for current_task in tasks_dict['tasks']:
+                        if current_task['completed']:
+                            continue
 
-        except AccountSuspended as error:
-            with open('suspended_accounts.txt', 'a', encoding='utf-8-sig') as file:
-                file.write(f'{error}\n')
+                        match current_task['id']:
+                            case 'connect':
+                                continue
 
-            logger.error(f'{error} | Account Suspended')
-            return
+                            case 'linkWallet':
+                                link_wallet_result, response_text = self.link_wallet(account=account,
+                                                                                     twitter_username=twitter_username)
 
-        except Exception as error:
-            logger.error(f'{account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
+                                if link_wallet_result:
+                                    logger.success(f'{self.account_token} | Успешно привязал кошелек')
 
-            return
+                                    async with aiofiles.open(file='registered.txt', mode='a',
+                                                             encoding='utf-8-sig') as f:
+                                        await f.write(
+                                            f'{self.account_token};{self.account_proxy if self.account_proxy else ""};{account.key.hex()}\n')
 
-        else:
-            with open(file='registered.txt', mode='a', encoding='utf-8-sig') as file:
-                file.write(f'{account_token};{account_proxy if account_proxy else ""};{account.key.hex()}\n')
+                                else:
+                                    logger.error(
+                                        f'{self.account_token} | Не удалось привязать кошелек, ответ: {response_text}')
 
-            return
+                            case 'twitterName':
+                                twitter_username_result, response_text = await self.twitter_name(
+                                    twitter_account_name=twitter_account_name)
+
+                                if twitter_username_result:
+                                    logger.success(
+                                        f'{self.account_token} | Успешно получил бонус за MEMELAND в никнейме')
+
+                                else:
+                                    logger.error(f'{self.account_token} | Не удалось получить бонус за MEMELAND в '
+                                                 f'никнейме, ответ: {response_text}')
+
+                            case 'shareMessage':
+                                share_message_result, response_text = await self.share_message(
+                                    twitter_username=twitter_username)
+
+                                if share_message_result:
+                                    logger.success(f'{self.account_token} | Успешно получил бонус за твит')
+
+                                else:
+                                    logger.error(
+                                        f'{self.account_token} | Не удалось создать твит, ответ: {response_text}')
+
+                            case 'inviteCode':
+                                invite_code_result, response_text = self.invite_code()
+
+                                if invite_code_result:
+                                    logger.success(f'{self.account_token} | Успешно ввел реф.код')
+
+                                else:
+                                    logger.error(f'{self.account_token} | Не удалось ввести реф.код, ответ: {r.text}')
+
+                            case 'followMemeland' | 'followMemecoin' | 'follow9gagceo':
+                                follow_result, response_text = await self.follow_quest(
+                                    username=current_task['id'].replace('follow', ''),
+                                    follow_id=current_task['id'])
+
+                                if follow_result:
+                                    logger.success(
+                                        f'{self.account_token} | Успешно подписался на {current_task["id"].replace("follow", "")}')
+
+                                else:
+                                    logger.error(
+                                        f'{self.account_token} | Подписаться на {current_task["id"].replace("follow", "")}: {response_text}')
+
+            except (Unauthorized, better_automation.twitter.errors.Unauthorized,
+                    better_automation.twitter.errors.HTTPException):
+                logger.error(f'{self.account_token} | Unauthorized')
+                continue
+
+            except AccountSuspended as error:
+                async with aiofiles.open('suspended_accounts.txt', 'a', encoding='utf-8-sig') as f:
+                    await f.write(f'{error}\n')
+
+                logger.error(f'{error} | Account Suspended')
+                return
+
+            # except Exception as error:
+            #     logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
+            #
+            #     return
+
+            else:
+                return
+
+
+def start_reger_wrapper(source_data: dict) -> None:
+    if config.CHANGE_PROXY_URL:
+        r = requests.get(config.CHANGE_PROXY_URL)
+        logger.info(f'{source_data["account_token"]} | Успешно сменил Proxy, ответ: {r.text}')
+
+    asyncio.run(Reger(source_data=source_data).start_reger())

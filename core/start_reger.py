@@ -375,6 +375,12 @@ class Reger:
                             'referer': 'https://www.memecoin.org/'
                         })
 
+                        if self.account_proxy:
+                            self.meme_client.proxies.update({
+                                'http': self.account_proxy,
+                                'https': self.account_proxy
+                            })
+
                         r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/twitter-auth1',
                                                   json={
                                                       'oauth_token': oauth_token,
@@ -468,7 +474,7 @@ class Reger:
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось ввести реф.код, ответ: {r.text}')
 
-                            case 'followMemeland' | 'followMemecoin' | 'follow9gagceo':
+                            case 'followMemeland' | 'followMemecoin' | 'follow9gagceo' | 'followGMShowofficial':
                                 follow_result, response_text = await self.follow_quest(
                                     username=current_task['id'].replace('follow', ''),
                                     follow_id=current_task['id'])

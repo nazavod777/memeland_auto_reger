@@ -495,7 +495,7 @@ class Reger:
                     logger.error(f'{self.account_token} | Account Suspended')
                     return
 
-                logger.error(f'{self.account_token} | Forbidder Twitter, ответ: {await error.response.text()}')
+                logger.error(f'{self.account_token} | Forbidden Twitter, ответ: {await error.response.text()}')
 
             except (Unauthorized, better_automation.twitter.errors.Unauthorized,
                     better_automation.twitter.errors.HTTPException):

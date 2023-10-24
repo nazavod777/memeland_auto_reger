@@ -314,7 +314,7 @@ class Reger:
             return False, await r[0].text()
 
     async def start_reger(self) -> None:
-        while True:
+        for _ in range(config.REPATS_COUNT):
             try:
                 async with aiohttp.ClientSession(
                         connector=ProxyConnector.from_url(
@@ -516,6 +516,12 @@ class Reger:
 
             else:
                 return
+
+        else:
+            logger.error(f'{self.account_token} | Emppty Attemps')
+
+            async with aiofiles.open('empty_attempts.txt', 'a', encoding='utf-8-sig') as f:
+                await f.write(f'{self.account_token}\n')
 
 
 def start_reger_wrapper(source_data: dict) -> None:

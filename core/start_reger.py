@@ -162,16 +162,25 @@ class Reger:
 
     async def share_message(self,
                             twitter_username: str, ) -> tuple[bool, str]:
-        create_tweet_status, tweet_id = await self.create_tweet(twitter_username=twitter_username)
+        try:
+            create_tweet_status, tweet_id = await self.create_tweet(twitter_username=twitter_username)
 
-        if not create_tweet_status:
-            return False, tweet_id
+        except better_automation.twitter.errors.HTTPException as error:
+            if 187 in error.api_codes:
+                pass
+
+            else:
+                raise better_automation.twitter.errors.HTTPException(error.response)
+
+        else:
+            if not create_tweet_status:
+                return False, tweet_id
 
         while True:
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/share-message',
                                       headers={
                                           **self.meme_client.headers,
-                                          'content-type': ''
+                                          'content-type': None
                                       })
 
             if r.json()['status'] == 'verification_failed':
@@ -322,8 +331,8 @@ class Reger:
                     if not location:
                         if not check_empty_value(value=auth_token,
                                                  account_token=self.account_token) or not check_empty_value(
-                            value=oauth_token,
-                            account_token=self.account_token):
+                                                 value=oauth_token,
+                                                 account_token=self.account_token):
                             logger.error(
                                 f'{self.account_token} | Ошибка при получении OAuth / Auth Token, ответ: {response_text}')
                             return
@@ -355,7 +364,10 @@ class Reger:
                             'chrome112'
                         ]))
                         self.meme_client.headers.update({
-                            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+                            'user-agent': choice([
+                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+                                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.962 YaBrowser/23.9.1.962 Yowser/2.5 Safari/537.36'
+                                ]),
                             'accept': 'application/json',
                             'accept-language': 'ru,en;q=0.9,vi;q=0.8,es;q=0.7,cy;q=0.6',
                             'content-type': 'application/json',
@@ -478,10 +490,10 @@ class Reger:
                 logger.error(f'{error} | Account Suspended')
                 return
 
-            # except Exception as error:
-            #     logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
-            #
-            #     return
+            except Exception as error:
+                logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
+
+                return
 
             else:
                 return

@@ -314,7 +314,7 @@ class Reger:
             return False, await r[0].text()
 
     async def start_reger(self) -> None:
-        for _ in range(config.REPATS_COUNT):
+        for _ in range(config.REPEATS_COUNT):
             try:
                 async with aiohttp.ClientSession(
                         connector=ProxyConnector.from_url(

@@ -331,8 +331,8 @@ class Reger:
                     if not location:
                         if not check_empty_value(value=auth_token,
                                                  account_token=self.account_token) or not check_empty_value(
-                                                 value=oauth_token,
-                                                 account_token=self.account_token):
+                            value=oauth_token,
+                            account_token=self.account_token):
                             logger.error(
                                 f'{self.account_token} | Ошибка при получении OAuth / Auth Token, ответ: {response_text}')
                             return
@@ -367,7 +367,7 @@ class Reger:
                             'user-agent': choice([
                                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
                                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.962 YaBrowser/23.9.1.962 Yowser/2.5 Safari/537.36'
-                                ]),
+                            ]),
                             'accept': 'application/json',
                             'accept-language': 'ru,en;q=0.9,vi;q=0.8,es;q=0.7,cy;q=0.6',
                             'content-type': 'application/json',
@@ -477,6 +477,16 @@ class Reger:
                                 else:
                                     logger.error(
                                         f'{self.account_token} | Подписаться на {current_task["id"].replace("follow", "")}: {response_text}')
+
+            except better_automation.twitter.errors.Forbidden as error:
+                if 'This account is suspended.' in await error.response.text():
+                    async with aiofiles.open('suspended_accounts.txt', 'a', encoding='utf-8-sig') as f:
+                        await f.write(f'{error}\n')
+
+                    logger.error(f'{self.account_token} | Account Suspended')
+                    return
+
+                logger.error(f'{self.account_token} | Forbidder Twitter, ответ: {await error.response.text()}')
 
             except (Unauthorized, better_automation.twitter.errors.Unauthorized,
                     better_automation.twitter.errors.HTTPException):

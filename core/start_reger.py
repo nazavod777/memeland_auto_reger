@@ -386,6 +386,9 @@ class Reger:
 
                             continue
 
+                        if r.json().get('error', '') == 'Unauthorized':
+                            raise Unauthorized()
+
                         access_token: str = r.json().get('accessToken', '')
 
                         if not access_token:

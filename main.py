@@ -48,7 +48,7 @@ if __name__ == '__main__':
             {
                 'account_token': current_account,
                 'account_proxy': next(cycled_proxies_list) if cycled_proxies_list else None,
-                'account_private_key': private_keys_list.pop() if private_keys_list else None
+                'account_private_key': private_keys_list.pop(0) if private_keys_list else None
             } for current_account in accounts_list
         ]
 

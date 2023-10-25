@@ -11,3 +11,4 @@ better-automation>=0.5.4
 lxml>=4.9.3
 tls-client>=0.2.2
 aiohttp_proxy>=0.1.2
+better-proxy>=0.2.1

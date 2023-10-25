@@ -11,8 +11,8 @@ import better_automation.twitter.errors
 import eth_account.signers.local
 import requests
 import tls_client.sessions
-from aiohttp_proxy import ProxyConnector
 from better_automation import TwitterAPI
+from better_proxy import Proxy
 from bs4 import BeautifulSoup
 from eth_account.messages import encode_defunct
 from web3.auto import w3
@@ -317,8 +317,8 @@ class Reger:
         for _ in range(config.REPEATS_COUNT):
             try:
                 async with aiohttp.ClientSession(
-                        connector=ProxyConnector.from_url(
-                            url=self.account_proxy) if self.account_proxy else None) as aiohttp_twitter_session:
+                        connector=Proxy.from_str(
+                            self.account_proxy).as_url if self.account_proxy else None) as aiohttp_twitter_session:
                     self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                         session=aiohttp_twitter_session,
                         auth_token=self.account_token)

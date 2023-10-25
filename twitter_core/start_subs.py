@@ -6,6 +6,7 @@ import aiohttp
 import better_automation.twitter.api
 from aiohttp_proxy import ProxyConnector
 from better_automation import TwitterAPI
+from better_proxy import Proxy
 
 import config
 from utils import logger
@@ -45,7 +46,8 @@ class StartSubs:
 
                 async with aiohttp.ClientSession(
                         connector=ProxyConnector.from_url(
-                            url=choice(self.proxies_list)) if self.proxies_list else None) as aiohttp_twitter_session:
+                            url=Proxy.from_str(choice(
+                                self.proxies_list)).as_url) if self.proxies_list else None) as aiohttp_twitter_session:
 
                     temp_twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                         session=aiohttp_twitter_session,

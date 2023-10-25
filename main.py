@@ -1,3 +1,4 @@
+from copy import deepcopy
 from multiprocessing.dummy import Pool
 from random import choice, randint
 from sys import exit
@@ -52,8 +53,8 @@ if __name__ == '__main__':
         first_int_subs_range: int = int(subs_range.split('-')[0])
         second_int_subs_range: int = int(subs_range.split('-')[1])
 
-        if second_int_subs_range > len(accounts_list):
-            second_int_subs_range: int = len(accounts_list)
+        if second_int_subs_range > len(accounts_list) - 1:
+            second_int_subs_range: int = len(accounts_list) - 1
 
         if first_int_subs_range > second_int_subs_range:
             logger.error('Неверно введен диапазон количества подписок')
@@ -65,7 +66,7 @@ if __name__ == '__main__':
         formatted_accounts_list: list = [
             {
                 'target_account_token': current_account,
-                'accounts_list': accounts_list,
+                'accounts_list': deepcopy(accounts_list),
                 'proxies_list': proxies_list,
                 'subs_count': randint(first_int_subs_range, second_int_subs_range)
             } for current_account in accounts_list

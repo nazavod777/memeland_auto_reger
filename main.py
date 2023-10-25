@@ -31,7 +31,7 @@ if __name__ == '__main__':
     logger.info(f'Загружено {len(accounts_list)} аккаунтов / {len(proxies_list)} '
                 f'прокси / {len(private_keys_list)} приват-кеев')
 
-    user_action: int = int(input('1. Запуск накрутки MEMELand\n'
+    user_action: int = int(input('\n1. Запуск накрутки MEMELand\n'
                                  '2. Подписка между аккаунтами Twitter\n'
                                  'Введите ваше действие: '))
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
         threads: int = 1
 
     else:
-        threads: int = int(input('\nThreads: '))
+        threads: int = int(input('Threads: '))
 
     if user_action == 1:
         print()

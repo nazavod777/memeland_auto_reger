@@ -1,5 +1,5 @@
-from copy import deepcopy
 import asyncio
+from copy import deepcopy
 from random import choice, randint
 
 import aiohttp

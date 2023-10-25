@@ -33,7 +33,11 @@ class StartSubs:
         i: int = 0
         local_accounts_list: list = deepcopy(self.account_list)
 
-        while i < self.subs_count <= len(local_accounts_list):
+        while i < self.subs_count:
+            if not local_accounts_list:
+                logger.error(f'{self.target_account_token} | Аккаунты закончились')
+                return
+
             random_token: None = None
 
             try:

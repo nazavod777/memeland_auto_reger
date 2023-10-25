@@ -552,6 +552,6 @@ class Reger:
 def start_reger_wrapper(source_data: dict) -> None:
     if config.CHANGE_PROXY_URL:
         r = requests.get(config.CHANGE_PROXY_URL)
-        logger.info(f'{source_data["account_token"]} | Успешно сменил Proxy, ответ: {r.text}')
+        logger.info(f'{source_data["account_token"]} | Успешно сменил Proxy, статус: {r.status_code}')
 
     asyncio.run(Reger(source_data=source_data).start_reger())

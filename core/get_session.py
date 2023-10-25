@@ -1,12 +1,13 @@
 import aiohttp
 import aiohttp.client
 from aiohttp_socks import ProxyConnector
+from better_proxy import Proxy
 from pyuseragents import random as random_useragent
 
 
 async def get_meme_session(account_proxy: str | None) -> aiohttp.client.ClientSession:
     session: aiohttp.client.ClientSession = aiohttp.ClientSession(
-        connector=ProxyConnector.from_url(url=account_proxy) if account_proxy else None)
+        connector=ProxyConnector.from_url(url=Proxy.from_str(account_proxy).as_url) if account_proxy else None)
 
     session.headers.update({
         'content-type': 'application/json',

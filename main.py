@@ -1,6 +1,7 @@
+import itertools
 from copy import deepcopy
 from multiprocessing.dummy import Pool
-from random import choice, randint
+from random import randint
 from sys import exit
 
 import config
@@ -21,6 +22,12 @@ if __name__ == '__main__':
         private_keys_list: list[str] = [f'0x{row.strip()}' if not row.strip().startswith('0x') else row.strip() for row
                                         in file]
 
+    if proxies_list:
+        cycled_proxies_list = itertools.cycle(proxies_list)
+
+    else:
+        cycled_proxies_list = None
+
     logger.info(f'Загружено {len(accounts_list)} аккаунтов / {len(proxies_list)} '
                 f'прокси / {len(private_keys_list)} приват-кеев')
 
@@ -40,7 +47,7 @@ if __name__ == '__main__':
         formatted_accounts_list: list = [
             {
                 'account_token': current_account,
-                'account_proxy': choice(proxies_list) if proxies_list else None,
+                'account_proxy': next(cycled_proxies_list) if cycled_proxies_list else None,
                 'account_private_key': private_keys_list.pop() if private_keys_list else None
             } for current_account in accounts_list
         ]
@@ -67,7 +74,7 @@ if __name__ == '__main__':
             {
                 'target_account_token': current_account,
                 'accounts_list': deepcopy(accounts_list),
-                'proxies_list': proxies_list,
+                'proxies_list': cycled_proxies_list,
                 'subs_count': randint(first_int_subs_range, second_int_subs_range)
             } for current_account in accounts_list
         ]

@@ -441,6 +441,7 @@ class Reger:
                                     if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
 
                                 else:
                                     logger.error(
@@ -457,6 +458,7 @@ class Reger:
                                     if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
 
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось получить бонус за MEMELAND в '
@@ -472,6 +474,7 @@ class Reger:
                                     if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
 
                                 else:
                                     logger.error(
@@ -486,6 +489,7 @@ class Reger:
                                     if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
 
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось ввести реф.код, ответ: {r.text}')
@@ -502,6 +506,7 @@ class Reger:
                                     if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
 
                                 else:
                                     logger.error(

@@ -11,7 +11,7 @@ import better_automation.twitter.errors
 import eth_account.signers.local
 import requests
 import tls_client.sessions
-from aiohttp_socks import ProxyConnector
+from aiohttp_proxy import ProxyConnector
 from better_automation import TwitterAPI
 from bs4 import BeautifulSoup
 from eth_account.messages import encode_defunct
@@ -438,6 +438,10 @@ class Reger:
                                         await f.write(
                                             f'{self.account_token};{self.account_proxy if self.account_proxy else ""};{account.key.hex()}\n')
 
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                        logger.info(
+                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+
                                 else:
                                     logger.error(
                                         f'{self.account_token} | Не удалось привязать кошелек, ответ: {response_text}')
@@ -450,6 +454,10 @@ class Reger:
                                     logger.success(
                                         f'{self.account_token} | Успешно получил бонус за MEMELAND в никнейме')
 
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                        logger.info(
+                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось получить бонус за MEMELAND в '
                                                  f'никнейме, ответ: {response_text}')
@@ -461,6 +469,10 @@ class Reger:
                                 if share_message_result:
                                     logger.success(f'{self.account_token} | Успешно получил бонус за твит')
 
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                        logger.info(
+                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+
                                 else:
                                     logger.error(
                                         f'{self.account_token} | Не удалось создать твит, ответ: {response_text}')
@@ -470,6 +482,10 @@ class Reger:
 
                                 if invite_code_result:
                                     logger.success(f'{self.account_token} | Успешно ввел реф.код')
+
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                        logger.info(
+                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
 
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось ввести реф.код, ответ: {r.text}')
@@ -482,6 +498,10 @@ class Reger:
                                 if follow_result:
                                     logger.success(
                                         f'{self.account_token} | Успешно подписался на {current_task["id"].replace("follow", "")}')
+
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                        logger.info(
+                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
 
                                 else:
                                     logger.error(

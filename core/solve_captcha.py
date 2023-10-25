@@ -100,6 +100,7 @@ class SolveCaptcha:
             co.add_argument("--mute-audio")
             co.add_argument('--headless')
             co.add_argument('log-level=3')
+            co.add_argument('--no-sandbox')
             co.add_experimental_option('excludeSwitches', ['enable-logging'])
 
             driver = webdriver.Chrome(seleniumwire_options=options,

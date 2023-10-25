@@ -11,6 +11,7 @@ import better_automation.twitter.errors
 import eth_account.signers.local
 import requests
 import tls_client.sessions
+from aiohttp_proxy import ProxyConnector
 from better_automation import TwitterAPI
 from better_proxy import Proxy
 from bs4 import BeautifulSoup
@@ -151,19 +152,17 @@ class Reger:
             return r.json()['status'] == 'success', r.text
 
     async def create_tweet(self,
-                           twitter_username: str, ) -> tuple[bool, str]:
+                           share_message: str) -> tuple[bool, str]:
         r = await self.twitter_client.tweet(
-            text=f'Hi, my name is @{twitter_username}, and I’m a $MEME (@Memecoin) farmer '
-                 'at @Memeland.\n\nOn my honor, I promise that I will do my best '
-                 'to do my duty to my own bag, and to farm #MEMEPOINTS at '
-                 'all times.\n\nIt ain’t much, but it’s honest work. 🧑‍🌾 ')
+            text=share_message)
 
         return True, str(r)
 
     async def share_message(self,
-                            twitter_username: str, ) -> tuple[bool, str]:
+                            share_message: str,
+                            verify_url: str) -> tuple[bool, str]:
         try:
-            create_tweet_status, tweet_id = await self.create_tweet(twitter_username=twitter_username)
+            create_tweet_status, tweet_id = await self.create_tweet(share_message=share_message)
 
         except better_automation.twitter.errors.HTTPException as error:
             if 187 in error.api_codes:
@@ -177,7 +176,7 @@ class Reger:
                 return False, tweet_id
 
         while True:
-            r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/share-message',
+            r = self.meme_client.post(url=verify_url,
                                       headers={
                                           **self.meme_client.headers,
                                           'content-type': None
@@ -317,8 +316,8 @@ class Reger:
         for _ in range(config.REPEATS_COUNT):
             try:
                 async with aiohttp.ClientSession(
-                        connector=Proxy.from_str(
-                            self.account_proxy).as_url if self.account_proxy else None) as aiohttp_twitter_session:
+                        connector=ProxyConnector.from_url(url=Proxy.from_str(
+                            self.account_proxy).as_url if self.account_proxy else None)) as aiohttp_twitter_session:
                     self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                         session=aiohttp_twitter_session,
                         auth_token=self.account_token)
@@ -418,7 +417,7 @@ class Reger:
                     tasks_dict: dict = self.get_tasks()
                     twitter_username, twitter_account_name = self.get_twitter_account_names()
 
-                    for current_task in tasks_dict['tasks']:
+                    for current_task in tasks_dict['tasks'] + tasks_dict['timely']:
                         if current_task['completed']:
                             continue
 
@@ -466,7 +465,11 @@ class Reger:
 
                             case 'shareMessage':
                                 share_message_result, response_text = await self.share_message(
-                                    twitter_username=twitter_username)
+                                    share_message=f'Hi, my name is @{twitter_username}, and I’m a $MEME (@Memecoin) farmer '
+                                                  'at @Memeland.\n\nOn my honor, I promise that I will do my best '
+                                                  'to do my duty to my own bag, and to farm #MEMEPOINTS at '
+                                                  'all times.\n\nIt ain’t much, but it’s honest work. 🧑‍🌾 ',
+                                    verify_url='https://memefarm-api.memecoin.org/user/verify/share-message')
 
                                 if share_message_result:
                                     logger.success(f'{self.account_token} | Успешно получил бонус за твит')
@@ -512,6 +515,27 @@ class Reger:
                                     logger.error(
                                         f'{self.account_token} | Подписаться на {current_task["id"].replace("follow", "")}: {response_text}')
 
+                            case 'firesale':
+                                share_message_result, response_text = await self.share_message(
+                                    share_message='Hey you 🫵\n\nI\'m pretty sure you were on X all day but in case you '
+                                                  'weren\'t, I wanna tell you that $MEME (yes, the @Memecoin I\'m '
+                                                  'farming) is having the Fire Sale today!\n\nProtip: If you have a '
+                                                  'WAITLIST wallet, come in the first hour for a 6.9X '
+                                                  'probability boost. You are welcome. ',
+                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/firesale')
+
+                                if share_message_result:
+                                    logger.success(f'{self.account_token} | Успешно получил бонус за твит FireSale')
+
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                        logger.info(
+                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
+                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
+
+                                else:
+                                    logger.error(
+                                        f'{self.account_token} | Не удалось создать твит, ответ: {response_text}')
+
             except better_automation.twitter.errors.Forbidden as error:
                 if 'This account is suspended.' in await error.response.text():
                     async with aiofiles.open('suspended_accounts.txt', 'a', encoding='utf-8-sig') as f:
@@ -533,11 +557,11 @@ class Reger:
 
                 logger.error(f'{error} | Account Suspended')
                 return
-
-            except Exception as error:
-                logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
-
-                return
+            #
+            # except Exception as error:
+            #     logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
+            #
+            #     return
 
             else:
                 return

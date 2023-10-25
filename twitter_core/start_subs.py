@@ -1,6 +1,6 @@
 import asyncio
 from copy import deepcopy
-from random import choice, randint
+from random import randint
 
 import aiohttp
 import better_automation.twitter.api
@@ -19,7 +19,7 @@ class StartSubs:
 
         self.target_account_token: str = account_data['target_account_token']
         self.account_list: list = account_data['accounts_list']
-        self.proxies_list: list | None = account_data['proxies_list']
+        self.proxies_list = account_data['proxies_list']
         self.subs_count: int = account_data['subs_count']
 
         if self.target_account_token in self.account_list:
@@ -46,7 +46,7 @@ class StartSubs:
 
                 async with aiohttp.ClientSession(
                         connector=ProxyConnector.from_url(
-                            url=Proxy.from_str(choice(
+                            url=Proxy.from_str(next(
                                 self.proxies_list)).as_url) if self.proxies_list else None) as aiohttp_twitter_session:
 
                     temp_twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
@@ -86,7 +86,7 @@ class StartSubs:
     async def start_subs(self):
         async with aiohttp.ClientSession(
                 connector=ProxyConnector.from_url(
-                    url=choice(self.proxies_list)) if self.proxies_list else None) as aiohttp_twitter_session:
+                    url=next(self.proxies_list)) if self.proxies_list else None) as aiohttp_twitter_session:
             self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                 session=aiohttp_twitter_session,
                 auth_token=self.target_account_token)

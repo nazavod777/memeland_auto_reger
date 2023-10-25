@@ -56,6 +56,9 @@ class StartSubs:
                                         f'сек. после смены Proxy')
                             await asyncio.sleep(delay=config.SLEEP_AFTER_PROXY_CHANGING)
 
+                    if not self.twitter_client.ct0:
+                        self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
+
                     try:
                         await temp_twitter_client.follow(
                             user_id=await temp_twitter_client.request_user_id(username=target_username))

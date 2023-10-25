@@ -119,6 +119,9 @@ class SolveCaptcha:
             driver.get('https://twitter.com/account/access')
 
             for _ in range(180):
+                home_page: bool = False
+                element = None
+
                 try:
                     element = driver.find_element(By.XPATH,
                                                   '//input[@type="submit" and contains(@class, "Button EdgeButton EdgeButton--primary")]')
@@ -130,7 +133,17 @@ class SolveCaptcha:
                     break
 
                 try:
-                    element = WebDriverWait(driver, 10).until(
+                    WebDriverWait(driver, 1).until(EC.url_contains("https://twitter.com/home"))
+
+                except (NoSuchElementException, TimeoutException):
+                    pass
+
+                else:
+                    home_page: bool = True
+                    break
+
+                try:
+                    element = WebDriverWait(driver, 1).until(
                         EC.element_to_be_clickable((By.ID, 'arkose_iframe'))
                     )
 
@@ -144,6 +157,10 @@ class SolveCaptcha:
 
             else:
                 logger.error(f'{account_token} | Не удалось дождаться капчи Twitter')
+                return
+
+            if home_page:
+                logger.success(f'{account_token} | Аккаунт успешно разморожен')
                 return
 
             if element.get_attribute('value') and element.get_attribute('value') == 'Continue to Twitter':

@@ -32,37 +32,45 @@ class StartSubs:
         i: int = 0
 
         while i < self.subs_count <= len(self.account_list):
-            async with aiohttp.ClientSession(
-                    connector=ProxyConnector.from_url(
-                        url=choice(self.proxies_list)) if self.proxies_list else None) as aiohttp_twitter_session:
+            random_token: None = None
 
-                temp_twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
-                    session=aiohttp_twitter_session,
-                    auth_token=self.account_list.pop(randint(0, len(self.account_list) - 1)))
+            try:
+                random_token: str = self.account_list.pop(randint(0, len(self.account_list) - 1))
 
-                if config.CHANGE_PROXY_URL:
-                    async with aiohttp.ClientSession() as change_proxy_session:
-                        async with change_proxy_session.get(url=config.CHANGE_PROXY_URL) as r:
-                            logger.info(
-                                f'{temp_twitter_client.auth_token} | Успешно сменил Proxy, ответ: {await r.text()}')
+                async with aiohttp.ClientSession(
+                        connector=ProxyConnector.from_url(
+                            url=choice(self.proxies_list)) if self.proxies_list else None) as aiohttp_twitter_session:
 
-                    if config.SLEEP_AFTER_PROXY_CHANGING:
-                        logger.info(f'{temp_twitter_client.auth_token} | Сплю {config.SLEEP_AFTER_PROXY_CHANGING} '
-                                    f'сек. после смены Proxy')
-                        await asyncio.sleep(delay=config.SLEEP_AFTER_PROXY_CHANGING)
+                    temp_twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
+                        session=aiohttp_twitter_session,
+                        auth_token=random_token)
 
-                try:
-                    await temp_twitter_client.follow(
-                        user_id=await temp_twitter_client.request_user_id(username=target_username))
+                    if config.CHANGE_PROXY_URL:
+                        async with aiohttp.ClientSession() as change_proxy_session:
+                            async with change_proxy_session.get(url=config.CHANGE_PROXY_URL) as r:
+                                logger.info(
+                                    f'{temp_twitter_client.auth_token} | Успешно сменил Proxy, ответ: {await r.text()}')
 
-                except Exception as error:
-                    logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
-                                 f'{target_username}: {error}')
+                        if config.SLEEP_AFTER_PROXY_CHANGING:
+                            logger.info(f'{temp_twitter_client.auth_token} | Сплю {config.SLEEP_AFTER_PROXY_CHANGING} '
+                                        f'сек. после смены Proxy')
+                            await asyncio.sleep(delay=config.SLEEP_AFTER_PROXY_CHANGING)
 
-                else:
-                    logger.success(f'{temp_twitter_client.auth_token} | Успешно подписался на {target_username} '
-                                   f'| {i + 1}/{self.subs_count}')
-                    i += 1
+                    try:
+                        await temp_twitter_client.follow(
+                            user_id=await temp_twitter_client.request_user_id(username=target_username))
+
+                    except Exception as error:
+                        logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
+                                     f'{target_username}: {error}')
+
+                    else:
+                        logger.success(f'{temp_twitter_client.auth_token} | Успешно подписался на {target_username} '
+                                       f'| {i + 1}/{self.subs_count}')
+                        i += 1
+
+            except Exception as error:
+                logger.error(f'{random_token} | Неизвестная ошибка при подписке на {target_username}: {error} ')
 
     async def start_subs(self):
         async with aiohttp.ClientSession(

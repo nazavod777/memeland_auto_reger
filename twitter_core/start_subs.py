@@ -51,7 +51,7 @@ class StartSubs:
                         async with aiohttp.ClientSession() as change_proxy_session:
                             async with change_proxy_session.get(url=config.CHANGE_PROXY_URL) as r:
                                 logger.info(
-                                    f'{temp_twitter_client.auth_token} | Успешно сменил Proxy, ответ: {await r.text()}')
+                                    f'{temp_twitter_client.auth_token} | Успешно сменил Proxy, статус: {r.status}')
 
                         if config.SLEEP_AFTER_PROXY_CHANGING:
                             logger.info(f'{temp_twitter_client.auth_token} | Сплю {config.SLEEP_AFTER_PROXY_CHANGING} '

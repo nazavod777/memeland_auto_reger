@@ -1,3 +1,4 @@
+from copy import deepcopy
 import asyncio
 from random import choice, randint
 
@@ -30,12 +31,13 @@ class StartSubs:
     async def subscribe_account(self,
                                 target_username: str) -> None:
         i: int = 0
+        local_accounts_list: list = deepcopy(self.account_list)
 
-        while i < self.subs_count <= len(self.account_list):
+        while i < self.subs_count <= len(local_accounts_list):
             random_token: None = None
 
             try:
-                random_token: str = self.account_list.pop(randint(0, len(self.account_list) - 1))
+                random_token: str = local_accounts_list.pop(randint(0, len(local_accounts_list) - 1))
 
                 async with aiohttp.ClientSession(
                         connector=ProxyConnector.from_url(

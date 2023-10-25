@@ -77,6 +77,7 @@ class SolveCaptcha:
                     continue
 
                 captcha_result: str = response_text
+                logger.info(f'{account_token} | Решение капчи получено, пробую отправить')
                 break
 
             if proxy:

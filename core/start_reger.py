@@ -437,7 +437,8 @@ class Reger:
                                         await f.write(
                                             f'{self.account_token};{self.account_proxy if self.account_proxy else ""};{account.key.hex()}\n')
 
-                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != \
+                                            (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
                                         await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
@@ -454,7 +455,8 @@ class Reger:
                                     logger.success(
                                         f'{self.account_token} | Успешно получил бонус за MEMELAND в никнейме')
 
-                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != \
+                                            (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
                                         await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
@@ -474,7 +476,8 @@ class Reger:
                                 if share_message_result:
                                     logger.success(f'{self.account_token} | Успешно получил бонус за твит')
 
-                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != \
+                                            (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
                                         await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
@@ -489,7 +492,8 @@ class Reger:
                                 if invite_code_result:
                                     logger.success(f'{self.account_token} | Успешно ввел реф.код')
 
-                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != \
+                                            (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
                                         await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
@@ -506,7 +510,8 @@ class Reger:
                                     logger.success(
                                         f'{self.account_token} | Успешно подписался на {current_task["id"].replace("follow", "")}')
 
-                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != \
+                                            (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
                                         await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
@@ -527,7 +532,8 @@ class Reger:
                                 if share_message_result:
                                     logger.success(f'{self.account_token} | Успешно получил бонус за твит FireSale')
 
-                                    if config.SLEEP_BETWEEN_TASKS and current_task != list(tasks_dict.values())[-1]:
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != \
+                                            (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
                                         logger.info(
                                             f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
                                         await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)

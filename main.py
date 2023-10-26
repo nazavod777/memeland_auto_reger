@@ -56,14 +56,25 @@ if __name__ == '__main__':
             executor.map(start_reger_wrapper, formatted_accounts_list)
 
     elif user_action == 2:
-        subs_range: str = input('Введите диапазон необходимого количества подписок (ex: 3-5, 4-10): ')
-        first_int_subs_range: int = int(subs_range.split('-')[0])
-        second_int_subs_range: int = int(subs_range.split('-')[1])
+        subs_range: str = input('Введите диапазон необходимого количества подписок (ex: 3-5, 4-10, 5, 10): ')
 
-        if second_int_subs_range > len(accounts_list) - 1:
-            second_int_subs_range: int = len(accounts_list) - 1
+        if '-' in subs_range:
+            first_int_subs_range: int = int(subs_range.split('-')[0])
+            second_int_subs_range: int = int(subs_range.split('-')[1])
 
-        if first_int_subs_range > second_int_subs_range:
+            if second_int_subs_range > len(accounts_list) - 1:
+                second_int_subs_range: int = len(accounts_list) - 1
+
+            if first_int_subs_range > second_int_subs_range:
+                logger.error('Неверно введен диапазон количества подписок')
+                input('\nPress Enter To Exit..')
+                exit()
+
+        elif subs_range.isdigit():
+            first_int_subs_range: int = int(subs_range)
+            second_int_subs_range: int = int(subs_range)
+
+        else:
             logger.error('Неверно введен диапазон количества подписок')
             input('\nPress Enter To Exit..')
             exit()

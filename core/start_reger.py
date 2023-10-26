@@ -11,7 +11,6 @@ import better_automation.twitter.errors
 import eth_account.signers.local
 import requests
 import tls_client.sessions
-from aiohttp_proxy import ProxyConnector
 from better_automation import TwitterAPI
 from better_proxy import Proxy
 from bs4 import BeautifulSoup
@@ -21,6 +20,7 @@ from web3.auto import w3
 import config
 from utils import check_empty_value
 from utils import generate_eth_account, get_account
+from utils import get_connector
 from utils import logger
 from .solve_captcha import SolveCaptcha
 
@@ -64,7 +64,7 @@ class Reger:
     def link_wallet_request(self,
                             address: str,
                             sign: str,
-                            message: str) -> tuple[bool, str]:
+                            message: str) -> tuple[bool, str, int]:
         while True:
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/link-wallet',
                                       json={
@@ -83,11 +83,11 @@ class Reger:
                 logger.error(f'{self.account_token} | Unauthorized')
                 raise Unauthorized()
 
-            return r.json()['status'] == 'success', r.text
+            return r.json()['status'] == 'success', r.text, r.status_code
 
     def link_wallet(self,
                     account: eth_account.signers.local.LocalAccount,
-                    twitter_username: str) -> tuple[bool, str]:
+                    twitter_username: str) -> tuple[bool, str, int]:
         message_to_sign: str = f'This wallet willl be dropped $MEME from your harvested MEMEPOINTS. ' \
                                'If you referred friends, family, lovers or strangers, ' \
                                'ensure this wallet has the NFT you referred.\n\n' \
@@ -109,7 +109,7 @@ class Reger:
                                         message=message_to_sign)
 
     async def change_twitter_name(self,
-                                  twitter_account_name: str) -> tuple[bool, str]:
+                                  twitter_account_name: str) -> tuple[bool, str, int]:
         r = await self.twitter_client.request(url='https://api.twitter.com/1.1/account/update_profile.json',
                                               method='post',
                                               data={
@@ -120,19 +120,19 @@ class Reger:
             raise AccountSuspended(self.account_token)
 
         if r[0].status == 200:
-            return True, await r[0].text()
+            return True, await r[0].text(), r[0].status
 
-        return False, await r[0].text()
+        return False, await r[0].text(), r[0].status
 
     async def twitter_name(self,
-                           twitter_account_name: str) -> tuple[bool, str]:
+                           twitter_account_name: str) -> tuple[bool, str, int]:
         if '❤️ Memecoin' not in twitter_account_name:
-            change_twitter_name_result, response_text = await self.change_twitter_name(
+            change_twitter_name_result, response_text, response_status = await self.change_twitter_name(
                 twitter_account_name=twitter_account_name)
 
             if not change_twitter_name_result:
                 logger.error(f'{self.account_token} | Не удалось изменить имя пользователя')
-                return False, response_text
+                return False, response_text, response_status
 
         while True:
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/twitter-name',
@@ -149,7 +149,7 @@ class Reger:
             elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
                 raise Unauthorized()
 
-            return r.json()['status'] == 'success', r.text
+            return r.json()['status'] == 'success', r.text, r.status_code
 
     async def create_tweet(self,
                            share_message: str) -> tuple[bool, str]:
@@ -160,7 +160,7 @@ class Reger:
 
     async def share_message(self,
                             share_message: str,
-                            verify_url: str) -> tuple[bool, str]:
+                            verify_url: str) -> tuple[bool, str, int]:
         try:
             create_tweet_status, tweet_id = await self.create_tweet(share_message=share_message)
 
@@ -173,7 +173,7 @@ class Reger:
 
         else:
             if not create_tweet_status:
-                return False, tweet_id
+                return False, tweet_id, 0
 
         while True:
             r = self.meme_client.post(url=verify_url,
@@ -190,13 +190,13 @@ class Reger:
             elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
                 raise Unauthorized()
 
-            return r.json()['status'] == 'success', r.text
+            return r.json()['status'] == 'success', r.text, r.status_code
 
     def invite_code(self) -> tuple[bool, str]:
         while True:
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/invite-code',
                                       json={
-                                          'code': 'captainz#6416'
+                                          'code': 'potatoz#5052'
                                       })
 
             if r.json()['status'] == 'verification_failed':
@@ -221,7 +221,7 @@ class Reger:
 
         return r.json()['status'] == 'success', r.text
 
-    async def get_oauth_auth_tokens(self) -> tuple[str | None, str | None, str | None, str]:
+    async def get_oauth_auth_tokens(self) -> tuple[str | None, str | None, str | None, str, int]:
         while True:
             headers: dict = self.twitter_client._headers
 
@@ -255,14 +255,15 @@ class Reger:
                 logger.info(f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
                 SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                             ct0=self.twitter_client.ct0).solve_captcha(proxy=Proxy.from_str(proxy=self.account_proxy).as_url if self.account_proxy else None,
-                                                                        account_token=self.account_token)
+                             ct0=self.twitter_client.ct0).solve_captcha(
+                    proxy=Proxy.from_str(proxy=self.account_proxy).as_url if self.account_proxy else None,
+                    account_token=self.account_token)
                 continue
 
             if 'https://www.memecoin.org/farming?oauth_token=' in (await r[0].text()):
                 return 'https://www.memecoin.org/farming?oauth_token=' + \
                        (await r[0].text()).split('https://www.memecoin.org/farming?oauth_token=')[-1].split('"')[
-                           0].replace('&amp;', '&'), None, None, await r[0].text()
+                           0].replace('&amp;', '&'), None, None, await r[0].text(), r[0].status
 
             auth_token_html = BeautifulSoup(await r[0].text(), 'lxml').find('input', {
                 'name': 'authenticity_token'
@@ -273,13 +274,13 @@ class Reger:
 
             if not auth_token_html or not oauth_token_html:
                 logger.error(f'{self.account_token} | Не удалось обнаружить Auth/OAuth Token на странице, '
-                             f'пробую еще раз, ответ: {await r[0].text()}')
+                             f'пробую еще раз, статус: {r[0].status}')
                 continue
 
             auth_token: str = auth_token_html.get('value', '')
             oauth_token: str = oauth_token_html.get('value', '')
 
-            return None, auth_token, oauth_token, await r[0].text()
+            return None, auth_token, oauth_token, await r[0].text(), r[0].status
 
     async def make_auth(self,
                         oauth_token: str,
@@ -316,8 +317,9 @@ class Reger:
         for _ in range(config.REPEATS_COUNT):
             try:
                 async with aiohttp.ClientSession(
-                        connector=ProxyConnector.from_url(url=Proxy.from_str(
-                            self.account_proxy).as_url) if self.account_proxy else None) as aiohttp_twitter_session:
+                        connector=await get_connector(
+                            proxy=self.account_proxy) if self.account_proxy else await get_connector(
+                            proxy=None)) as aiohttp_twitter_session:
                     self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                         session=aiohttp_twitter_session,
                         auth_token=self.account_token)
@@ -325,7 +327,7 @@ class Reger:
                     if not self.twitter_client.ct0:
                         self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
 
-                    location, auth_token, oauth_token, response_text = await self.get_oauth_auth_tokens()
+                    location, auth_token, oauth_token, response_text, response_status = await self.get_oauth_auth_tokens()
 
                     if not location:
                         if not check_empty_value(value=auth_token,
@@ -333,7 +335,8 @@ class Reger:
                             value=oauth_token,
                             account_token=self.account_token):
                             logger.error(
-                                f'{self.account_token} | Ошибка при получении OAuth / Auth Token, ответ: {response_text}')
+                                f'{self.account_token} | Ошибка при получении OAuth / Auth Token, статус: {response_text}')
+
                             return
 
                         location, response_text = await self.make_auth(oauth_token=oauth_token,
@@ -342,7 +345,7 @@ class Reger:
                         if not check_empty_value(value=location,
                                                  account_token=self.account_token):
                             logger.error(
-                                f'{self.account_token} | Ошибка при авторизации через Twitter, ответ: {response_text}')
+                                f'{self.account_token} | Ошибка при авторизации через Twitter, статус: {response_status}')
                             return
 
                     if parse_qs(urlparse(location).query).get('redirect_after_login') \
@@ -398,7 +401,7 @@ class Reger:
 
                         if not access_token:
                             logger.error(
-                                f'{self.account_token} | Не удалось обнаружить Access Token в ответе, пробую еще раз, ответ: {r.text}')
+                                f'{self.account_token} | Не удалось обнаружить Access Token в ответе, пробую еще раз, статус: {r.status_code}')
                             continue
 
                         break
@@ -426,8 +429,8 @@ class Reger:
                                 continue
 
                             case 'linkWallet':
-                                link_wallet_result, response_text = self.link_wallet(account=account,
-                                                                                     twitter_username=twitter_username)
+                                link_wallet_result, response_text, response_status = self.link_wallet(account=account,
+                                                                                                      twitter_username=twitter_username)
 
                                 if link_wallet_result:
                                     logger.success(f'{self.account_token} | Успешно привязал кошелек')
@@ -445,10 +448,10 @@ class Reger:
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Не удалось привязать кошелек, ответ: {response_text}')
+                                        f'{self.account_token} | Не удалось привязать кошелек, статус: {response_status}')
 
                             case 'twitterName':
-                                twitter_username_result, response_text = await self.twitter_name(
+                                twitter_username_result, response_text, response_status = await self.twitter_name(
                                     twitter_account_name=twitter_account_name)
 
                                 if twitter_username_result:
@@ -463,10 +466,10 @@ class Reger:
 
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось получить бонус за MEMELAND в '
-                                                 f'никнейме, ответ: {response_text}')
+                                                 f'никнейме, статус: {response_status}')
 
                             case 'shareMessage':
-                                share_message_result, response_text = await self.share_message(
+                                share_message_result, response_text, response_status = await self.share_message(
                                     share_message=f'Hi, my name is @{twitter_username}, and I’m a $MEME (@Memecoin) farmer '
                                                   'at @Memeland.\n\nOn my honor, I promise that I will do my best '
                                                   'to do my duty to my own bag, and to farm #MEMEPOINTS at '
@@ -484,7 +487,7 @@ class Reger:
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Не удалось создать твит, ответ: {response_text}')
+                                        f'{self.account_token} | Не удалось создать твит, статус: {response_status}')
 
                             case 'inviteCode':
                                 invite_code_result, response_text = self.invite_code()
@@ -499,7 +502,8 @@ class Reger:
                                         await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
 
                                 else:
-                                    logger.error(f'{self.account_token} | Не удалось ввести реф.код, ответ: {r.text}')
+                                    logger.error(
+                                        f'{self.account_token} | Не удалось ввести реф.код, статус: {r.status_code}')
 
                             case 'followMemeland' | 'followMemecoin' | 'follow9gagceo' | 'followGMShowofficial':
                                 follow_result, response_text = await self.follow_quest(
@@ -521,7 +525,7 @@ class Reger:
                                         f'{self.account_token} | Подписаться на {current_task["id"].replace("follow", "")}: {response_text}')
 
                             case 'honestWork':
-                                share_message_result, response_text = await self.share_message(
+                                share_message_result, response_text, response_status = await self.share_message(
                                     share_message='🔥 Fuck Yeah! $MEME (@Memecoin) Fire Sale is 100% reserved in 42 '
                                                   'min! I want to thank myself for all the honest work in making it '
                                                   'happen.\n\nYou can still join the Sale if you have an Allowlist or '
@@ -540,7 +544,7 @@ class Reger:
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Не удалось создать твит, ответ: {response_text}')
+                                        f'{self.account_token} | Не удалось создать твит, статус: {response_status}')
 
             except better_automation.twitter.errors.Forbidden as error:
                 if 'This account is suspended.' in await error.response.text():
@@ -550,7 +554,7 @@ class Reger:
                     logger.error(f'{self.account_token} | Account Suspended')
                     return
 
-                logger.error(f'{self.account_token} | Forbidden Twitter, ответ: {await error.response.text()}')
+                logger.error(f'{self.account_token} | Forbidden Twitter, статус: {error.response.status}')
 
             except (Unauthorized, better_automation.twitter.errors.Unauthorized,
                     better_automation.twitter.errors.HTTPException):
@@ -586,7 +590,8 @@ def start_reger_wrapper(source_data: dict) -> None:
             logger.info(f'{source_data["account_token"]} | Успешно сменил Proxy, статус: {r.status_code}')
 
             if config.SLEEP_AFTER_PROXY_CHANGING:
-                logger.info(f'{source_data["account_token"]} | Сплю {config.SLEEP_AFTER_PROXY_CHANGING} сек. после смены Proxy')
+                logger.info(
+                    f'{source_data["account_token"]} | Сплю {config.SLEEP_AFTER_PROXY_CHANGING} сек. после смены Proxy')
                 sleep(config.SLEEP_AFTER_PROXY_CHANGING)
 
         asyncio.run(Reger(source_data=source_data).start_reger())

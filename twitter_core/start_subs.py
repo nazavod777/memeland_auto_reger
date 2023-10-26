@@ -4,11 +4,10 @@ from random import randint
 
 import aiohttp
 import better_automation.twitter.api
-from aiohttp_proxy import ProxyConnector
 from better_automation import TwitterAPI
-from better_proxy import Proxy
 
 import config
+from utils import get_connector
 from utils import logger
 
 
@@ -45,9 +44,9 @@ class StartSubs:
                 random_token: str = local_accounts_list.pop(randint(0, len(local_accounts_list) - 1))
 
                 async with aiohttp.ClientSession(
-                        connector=ProxyConnector.from_url(
-                            url=Proxy.from_str(next(
-                                self.proxies_list)).as_url) if self.proxies_list else None) as aiohttp_twitter_session:
+                        connector=await get_connector(proxy=next(
+                            self.proxies_list) if self.proxies_list else await get_connector(
+                            proxy=None))) as aiohttp_twitter_session:
 
                     temp_twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                         session=aiohttp_twitter_session,
@@ -96,8 +95,9 @@ class StartSubs:
 
     async def start_subs(self):
         async with aiohttp.ClientSession(
-                connector=ProxyConnector.from_url(
-                    url=next(self.proxies_list)) if self.proxies_list else None) as aiohttp_twitter_session:
+                connector=await get_connector(
+                    proxy=next(self.proxies_list)) if self.proxies_list else await get_connector(
+                    proxy=None)) as aiohttp_twitter_session:
             self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                 session=aiohttp_twitter_session,
                 auth_token=self.target_account_token)

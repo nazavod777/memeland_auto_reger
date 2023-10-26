@@ -549,7 +549,7 @@ class Reger:
             except better_automation.twitter.errors.Forbidden as error:
                 if 'This account is suspended.' in await error.response.text():
                     async with aiofiles.open('suspended_accounts.txt', 'a', encoding='utf-8-sig') as f:
-                        await f.write(f'{error}\n')
+                        await f.write(f'{self.account_token}\n')
 
                     logger.error(f'{self.account_token} | Account Suspended')
                     return
@@ -577,7 +577,7 @@ class Reger:
                 return
 
         else:
-            logger.error(f'{self.account_token} | Emppty Attemps')
+            logger.error(f'{self.account_token} | Empty Attemps')
 
             async with aiofiles.open('empty_attempts.txt', 'a', encoding='utf-8-sig') as f:
                 await f.write(f'{self.account_token}\n')

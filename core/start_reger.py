@@ -586,8 +586,8 @@ def start_reger_wrapper(source_data: dict) -> None:
             logger.info(f'{source_data["account_token"]} | Успешно сменил Proxy, статус: {r.status_code}')
 
             if config.SLEEP_AFTER_PROXY_CHANGING:
-                logger.info(f'{source_data["account_token"]} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. после смены Proxy')
-                sleep(config.SLEEP_BETWEEN_TASKS)
+                logger.info(f'{source_data["account_token"]} | Сплю {config.SLEEP_AFTER_PROXY_CHANGING} сек. после смены Proxy')
+                sleep(config.SLEEP_AFTER_PROXY_CHANGING)
 
         asyncio.run(Reger(source_data=source_data).start_reger())
 

@@ -520,17 +520,17 @@ class Reger:
                                     logger.error(
                                         f'{self.account_token} | Подписаться на {current_task["id"].replace("follow", "")}: {response_text}')
 
-                            case 'firesale':
+                            case 'honestWork':
                                 share_message_result, response_text = await self.share_message(
-                                    share_message='Hey you 🫵\n\nI\'m pretty sure you were on X all day but in case you '
-                                                  'weren\'t, I wanna tell you that $MEME (yes, the @Memecoin I\'m '
-                                                  'farming) is having the Fire Sale today!\n\nProtip: If you have a '
-                                                  'WAITLIST wallet, come in the first hour for a 6.9X '
-                                                  'probability boost. You are welcome. ',
-                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/firesale')
+                                    share_message='🔥 Fuck Yeah! $MEME (@Memecoin) Fire Sale is 100% reserved in 42 '
+                                                  'min! I want to thank myself for all the honest work in making it '
+                                                  'happen.\n\nYou can still join the Sale if you have an Allowlist or '
+                                                  'Waitlist until October 27, 12AM PT/ 3AM ET!\n\nP.S. '
+                                                  '$MEME FARMING WILL GO ON! LFG! 🧑‍🌾',
+                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/honestWork')
 
                                 if share_message_result:
-                                    logger.success(f'{self.account_token} | Успешно получил бонус за твит FireSale')
+                                    logger.success(f'{self.account_token} | Успешно получил бонус за твит honestWork')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:

@@ -255,7 +255,7 @@ class Reger:
                 logger.info(f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
                 SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                             ct0=self.twitter_client.ct0).solve_captcha(proxy=self.account_proxy,
+                             ct0=self.twitter_client.ct0).solve_captcha(proxy=Proxy.from_str(proxy=self.account_proxy).as_url if self.account_proxy else None,
                                                                         account_token=self.account_token)
                 continue
 
@@ -317,7 +317,7 @@ class Reger:
             try:
                 async with aiohttp.ClientSession(
                         connector=ProxyConnector.from_url(url=Proxy.from_str(
-                            self.account_proxy).as_url if self.account_proxy else None)) as aiohttp_twitter_session:
+                            self.account_proxy).as_url) if self.account_proxy else None) as aiohttp_twitter_session:
                     self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                         session=aiohttp_twitter_session,
                         auth_token=self.account_token)
@@ -563,11 +563,11 @@ class Reger:
 
                 logger.error(f'{error} | Account Suspended')
                 return
-            #
-            # except Exception as error:
-            #     logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
-            #
-            #     return
+
+            except Exception as error:
+                logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
+
+                return
 
             else:
                 return

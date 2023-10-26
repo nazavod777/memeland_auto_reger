@@ -71,8 +71,13 @@ if __name__ == '__main__':
                 exit()
 
         elif subs_range.isdigit():
-            first_int_subs_range: int = int(subs_range)
-            second_int_subs_range: int = int(subs_range)
+            if int(subs_range) > len(accounts_list) - 1:
+                first_int_subs_range: int = len(accounts_list) - 1
+                second_int_subs_range: int = len(accounts_list) - 1
+
+            else:
+                first_int_subs_range: int = int(subs_range)
+                second_int_subs_range: int = int(subs_range)
 
         else:
             logger.error('Неверно введен диапазон количества подписок')

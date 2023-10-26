@@ -71,12 +71,18 @@ class StartSubs:
                         await temp_twitter_client.follow(
                             user_id=await temp_twitter_client.request_user_id(username=target_username))
 
-                    except Exception as error:
-                        if error == '\'rest_id\'':
-                            logger.error(f'{temp_twitter_client.auth_token} | Не найден пользователь с '
-                                         f'ником {target_username}')
+                    except KeyError as error:
+                        if error.args[0] in ['rest_id',
+                                             'user_result_by_screen_name']:
+                            logger.error(f'{temp_twitter_client.auth_token} | Не удалось найти пользователя '
+                                         f'{target_username}')
                             return
 
+                        else:
+                            logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
+                                         f'{target_username}: {error}')
+
+                    except Exception as error:
                         logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                      f'{target_username}: {error}')
 

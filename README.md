@@ -1,3 +1,5 @@
+### Только 3.11.6 Python-версия
+
 ### CONFIG.PY  
 **SITE_KEY** - _SITEKEY для решения капчи Twitter при разморозке аккаунта, не менять_  
 **SITE_URL** - _SITEURL Twitter для разморозки аккаунта_  

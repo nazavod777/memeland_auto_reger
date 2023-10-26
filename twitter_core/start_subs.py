@@ -72,6 +72,11 @@ class StartSubs:
                             user_id=await temp_twitter_client.request_user_id(username=target_username))
 
                     except Exception as error:
+                        if error == 'rest_id':
+                            logger.error(f'{temp_twitter_client.auth_token} | Не найден пользователь с '
+                                         f'ником {target_username}')
+                            return
+
                         logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                      f'{target_username}: {error}')
 

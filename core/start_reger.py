@@ -18,19 +18,13 @@ from eth_account.messages import encode_defunct
 from web3.auto import w3
 
 import config
+from exceptions import Unauthorized, AccountSuspended
 from utils import check_empty_value
+from utils import format_range
 from utils import generate_eth_account, get_account
 from utils import get_connector
 from utils import logger
 from .solve_captcha import SolveCaptcha
-
-
-class Unauthorized(BaseException):
-    pass
-
-
-class AccountSuspended(BaseException):
-    pass
 
 
 class Reger:
@@ -42,12 +36,13 @@ class Reger:
 
         self.twitter_client: better_automation.twitter.api.TwitterAPI | None = None
         self.meme_client: tls_client.sessions.Session | None = None
+        self.account_too_new_attempts: int = 0
 
     def get_tasks(self) -> dict:
         r = self.meme_client.get(url='https://memefarm-api.memecoin.org/user/tasks',
                                  headers={
                                      **self.meme_client.headers,
-                                     'content-type': ''
+                                     'content-type': None
                                  })
 
         return r.json()
@@ -56,7 +51,7 @@ class Reger:
         r = self.meme_client.get(url='https://memefarm-api.memecoin.org/user/info',
                                  headers={
                                      **self.meme_client.headers,
-                                     'content-type': ''
+                                     'content-type': None
                                  })
 
         return r.json()['twitter']['username'], r.json()['twitter']['name']
@@ -138,7 +133,7 @@ class Reger:
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/twitter-name',
                                       headers={
                                           **self.meme_client.headers,
-                                          'content-type': ''
+                                          'content-type': None
                                       })
 
             if r.json()['status'] == 'verification_failed':
@@ -223,13 +218,14 @@ class Reger:
 
     async def get_oauth_auth_tokens(self) -> tuple[str | None, str | None, str | None, str, int]:
         while True:
-            headers: dict = self.twitter_client._headers
+            headers: dict = self.twitter_client.headers
 
             if headers.get('content-type'):
                 del headers['content-type']
 
             headers[
-                'accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'
+                'accept'] = ('text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,'
+                             '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7')
 
             if not self.twitter_client.ct0:
                 self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
@@ -256,8 +252,7 @@ class Reger:
 
                 SolveCaptcha(auth_token=self.twitter_client.auth_token,
                              ct0=self.twitter_client.ct0).solve_captcha(
-                    proxy=Proxy.from_str(proxy=self.account_proxy).as_url if self.account_proxy else None,
-                    account_token=self.account_token)
+                    proxy=Proxy.from_str(proxy=self.account_proxy).as_url if self.account_proxy else None)
                 continue
 
             if 'https://www.memecoin.org/farming?oauth_token=' in (await r[0].text()):
@@ -293,11 +288,12 @@ class Reger:
                                                   method='post',
                                                   data={
                                                       'authenticity_token': auth_token,
-                                                      'redirect_after_login': f'https://api.twitter.com/oauth/authorize?oauth_token={oauth_token}',
+                                                      'redirect_after_login': f'https://api.twitter.com/oauth'
+                                                                              f'/authorize?oauth_token={oauth_token}',
                                                       'oauth_token': oauth_token
                                                   },
                                                   headers={
-                                                      **self.twitter_client._headers,
+                                                      **self.twitter_client.headers,
                                                       'content-type': 'application/x-www-form-urlencoded'
                                                   })
 
@@ -313,8 +309,8 @@ class Reger:
 
             return False, await r[0].text()
 
-    async def start_reger(self) -> None:
-        for _ in range(config.REPEATS_COUNT):
+    async def start_reger(self) -> bool:
+        for _ in range(config.REPEATS_ATTEMPTS):
             try:
                 async with aiohttp.ClientSession(
                         connector=await get_connector(
@@ -331,13 +327,14 @@ class Reger:
 
                     if not location:
                         if not check_empty_value(value=auth_token,
-                                                 account_token=self.account_token) or not check_empty_value(
-                            value=oauth_token,
-                            account_token=self.account_token):
+                                                 account_token=self.account_token) \
+                                or not check_empty_value(value=oauth_token,
+                                                         account_token=self.account_token):
                             logger.error(
-                                f'{self.account_token} | Ошибка при получении OAuth / Auth Token, статус: {response_text}')
+                                f'{self.account_token} | Ошибка при получении OAuth / Auth Token, '
+                                f'статус: {response_text}')
 
-                            return
+                            return False
 
                         location, response_text = await self.make_auth(oauth_token=oauth_token,
                                                                        auth_token=auth_token)
@@ -345,21 +342,23 @@ class Reger:
                         if not check_empty_value(value=location,
                                                  account_token=self.account_token):
                             logger.error(
-                                f'{self.account_token} | Ошибка при авторизации через Twitter, статус: {response_status}')
-                            return
+                                f'{self.account_token} | Ошибка при авторизации через Twitter, '
+                                f'статус: {response_status}')
+                            return False
 
                     if parse_qs(urlparse(location).query).get('redirect_after_login') \
                             or not parse_qs(urlparse(location).query).get('oauth_token') \
                             or not parse_qs(urlparse(location).query).get('oauth_verifier'):
                         logger.error(
-                            f'{self.account_token} | Не удалось обнаружить OAuth Token / OAuth Verifier в ссылке: {location}')
+                            f'{self.account_token} | Не удалось обнаружить OAuth Token / OAuth Verifier в '
+                            f'ссылке: {location}')
                         continue
 
                     oauth_token: str = parse_qs(urlparse(location).query)['oauth_token'][0]
                     oauth_verifier: str = parse_qs(urlparse(location).query)['oauth_verifier'][0]
                     access_token: str = ''
 
-                    while True:
+                    while self.account_too_new_attempts < config.ACCOUNT_TOO_NEW_ATTEMPTS:
                         self.meme_client = tls_client.Session(client_identifier=choice([
                             'Chrome110',
                             'chrome111',
@@ -367,8 +366,10 @@ class Reger:
                         ]))
                         self.meme_client.headers.update({
                             'user-agent': choice([
-                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
-                                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.5845.962 YaBrowser/23.9.1.962 Yowser/2.5 Safari/537.36'
+                                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                                'Chrome/112.0.0.0 Safari/537.36',
+                                'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                                'Chrome/116.0.5845.962 YaBrowser/23.9.1.962 Yowser/2.5 Safari/537.36'
                             ]),
                             'accept': 'application/json',
                             'accept-language': 'ru,en;q=0.9,vi;q=0.8,es;q=0.7,cy;q=0.6',
@@ -401,10 +402,19 @@ class Reger:
 
                         if not access_token:
                             logger.error(
-                                f'{self.account_token} | Не удалось обнаружить Access Token в ответе, пробую еще раз, статус: {r.status_code}')
+                                f'{self.account_token} | Не удалось обнаружить Access Token в ответе, пробую еще раз, '
+                                f'статус: {r.status_code}')
                             continue
 
                         break
+
+                    else:
+                        logger.error(f'{self.account_token} | Account Too New Empty Attempts')
+
+                        async with aiofiles.open('account_too_new.txt', 'a', encoding='utf-8-sig') as f:
+                            await f.write(f'{self.account_token}\n')
+
+                        return False
 
                     self.meme_client.headers.update({
                         'authorization': f'Bearer {access_token}'
@@ -438,13 +448,17 @@ class Reger:
                                     async with aiofiles.open(file='registered.txt', mode='a',
                                                              encoding='utf-8-sig') as f:
                                         await f.write(
-                                            f'{self.account_token};{self.account_proxy if self.account_proxy else ""};{account.key.hex()}\n')
+                                            f'{self.account_token};{self.account_proxy if self.account_proxy else ""};'
+                                            '{account.key.hex()}\n')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
+                                        time_to_sleep: int = format_range(value=config.SLEEP_BETWEEN_TASKS,
+                                                                          return_randint=True)
                                         logger.info(
-                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
-                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
+                                            f'{self.account_token} | Сплю {time_to_sleep} сек. перед '
+                                            f'выполнением следующего таска')
+                                        await asyncio.sleep(delay=time_to_sleep)
 
                                 else:
                                     logger.error(
@@ -460,9 +474,12 @@ class Reger:
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
+                                        time_to_sleep: int = format_range(value=config.SLEEP_BETWEEN_TASKS,
+                                                                          return_randint=True)
                                         logger.info(
-                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
-                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
+                                            f'{self.account_token} | Сплю {time_to_sleep} сек. перед '
+                                            f'выполнением следующего таска')
+                                        await asyncio.sleep(delay=time_to_sleep)
 
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось получить бонус за MEMELAND в '
@@ -470,7 +487,8 @@ class Reger:
 
                             case 'shareMessage':
                                 share_message_result, response_text, response_status = await self.share_message(
-                                    share_message=f'Hi, my name is @{twitter_username}, and I’m a $MEME (@Memecoin) farmer '
+                                    share_message=f'Hi, my name is @{twitter_username}, and I’m a $MEME (@Memecoin) '
+                                                  f'farmer'
                                                   'at @Memeland.\n\nOn my honor, I promise that I will do my best '
                                                   'to do my duty to my own bag, and to farm #MEMEPOINTS at '
                                                   'all times.\n\nIt ain’t much, but it’s honest work. 🧑‍🌾 ',
@@ -481,9 +499,12 @@ class Reger:
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
+                                        time_to_sleep: int = format_range(value=config.SLEEP_BETWEEN_TASKS,
+                                                                          return_randint=True)
                                         logger.info(
-                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
-                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
+                                            f'{self.account_token} | Сплю {time_to_sleep} сек. перед '
+                                            f'выполнением следующего таска')
+                                        await asyncio.sleep(delay=time_to_sleep)
 
                                 else:
                                     logger.error(
@@ -497,9 +518,12 @@ class Reger:
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
+                                        time_to_sleep: int = format_range(value=config.SLEEP_BETWEEN_TASKS,
+                                                                          return_randint=True)
                                         logger.info(
-                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
-                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
+                                            f'{self.account_token} | Сплю {time_to_sleep} сек. перед '
+                                            f'выполнением следующего таска')
+                                        await asyncio.sleep(delay=time_to_sleep)
 
                                 else:
                                     logger.error(
@@ -512,35 +536,45 @@ class Reger:
 
                                 if follow_result:
                                     logger.success(
-                                        f'{self.account_token} | Успешно подписался на {current_task["id"].replace("follow", "")}')
+                                        f'{self.account_token} | Успешно подписался на '
+                                        f'{current_task["id"].replace("follow", "")}')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
+                                        time_to_sleep: int = format_range(value=config.SLEEP_BETWEEN_TASKS,
+                                                                          return_randint=True)
                                         logger.info(
-                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
-                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
+                                            f'{self.account_token} | Сплю {time_to_sleep} сек. перед '
+                                            f'выполнением следующего таска')
+                                        await asyncio.sleep(delay=time_to_sleep)
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Подписаться на {current_task["id"].replace("follow", "")}: {response_text}')
+                                        f'{self.account_token} | Не удалось одписаться на '
+                                        f'{current_task["id"].replace("follow", "")}: {response_text}')
 
-                            case 'honestWork':
+                            case 'goingToBinance':
                                 share_message_result, response_text, response_status = await self.share_message(
-                                    share_message='🔥 Fuck Yeah! $MEME (@Memecoin) Fire Sale is 100% reserved in 42 '
-                                                  'min! I want to thank myself for all the honest work in making it '
-                                                  'happen.\n\nYou can still join the Sale if you have an Allowlist or '
-                                                  'Waitlist until October 27, 12AM PT/ 3AM ET!\n\nP.S. '
-                                                  '$MEME FARMING WILL GO ON! LFG! 🧑‍🌾',
-                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/honestWork')
+                                    share_message='AHOY! $MEME (@MEMECOIN) IS GOING TO @BINANCE! 🙌\n\nThis is not a '
+                                                  'drill! This is not fake news! This is happening!\n\n$MEME is the '
+                                                  '39th (not 69th) project on Binance Launchpool! You only have 7 days!'
+                                                  ' Come join the farming with your fellow Binancians!\n\n👇 '
+                                                  'https://www.binance.com/en/support/announcement/'
+                                                  '90ccca2c5d6946ef9439dae41a517578',
+                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/goingToBinance')
 
                                 if share_message_result:
-                                    logger.success(f'{self.account_token} | Успешно получил бонус за твит honestWork')
+                                    logger.success(
+                                        f'{self.account_token} | Успешно получил бонус за твит goingToBinance')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
+                                        time_to_sleep: int = format_range(value=config.SLEEP_BETWEEN_TASKS,
+                                                                          return_randint=True)
                                         logger.info(
-                                            f'{self.account_token} | Сплю {config.SLEEP_BETWEEN_TASKS} сек. перед выполнением следующего таска')
-                                        await asyncio.sleep(delay=config.SLEEP_BETWEEN_TASKS)
+                                            f'{self.account_token} | Сплю {time_to_sleep} сек. перед '
+                                            f'выполнением следующего таска')
+                                        await asyncio.sleep(delay=time_to_sleep)
 
                                 else:
                                     logger.error(
@@ -552,7 +586,7 @@ class Reger:
                         await f.write(f'{self.account_token}\n')
 
                     logger.error(f'{self.account_token} | Account Suspended')
-                    return
+                    return False
 
                 logger.error(f'{self.account_token} | Forbidden Twitter, статус: {error.response.status}')
 
@@ -566,24 +600,26 @@ class Reger:
                     await f.write(f'{error}\n')
 
                 logger.error(f'{error} | Account Suspended')
-                return
+                return False
 
             except Exception as error:
                 logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
 
-                return
+                return False
 
             else:
-                return
+                return True
 
         else:
-            logger.error(f'{self.account_token} | Empty Attemps')
+            logger.error(f'{self.account_token} | Empty Attempts')
 
             async with aiofiles.open('empty_attempts.txt', 'a', encoding='utf-8-sig') as f:
                 await f.write(f'{self.account_token}\n')
 
+            return False
 
-def start_reger_wrapper(source_data: dict) -> None:
+
+def start_reger_wrapper(source_data: dict) -> bool:
     try:
         if config.CHANGE_PROXY_URL:
             r = requests.get(config.CHANGE_PROXY_URL)
@@ -594,7 +630,7 @@ def start_reger_wrapper(source_data: dict) -> None:
                     f'{source_data["account_token"]} | Сплю {config.SLEEP_AFTER_PROXY_CHANGING} сек. после смены Proxy')
                 sleep(config.SLEEP_AFTER_PROXY_CHANGING)
 
-        asyncio.run(Reger(source_data=source_data).start_reger())
+        return asyncio.run(Reger(source_data=source_data).start_reger())
 
     except Exception as error:
         logger.error(f'{source_data["account_token"]} | Неизвестная ошибка: {error}')

@@ -52,13 +52,12 @@ class SolveCaptcha:
 
     def interceptor(self,
                     request):
-        del request.headers['cookie']
-        request.headers['cookie'] = f'auth_token=' + self.auth_token + '; ct0=' + self.ct0
-        del request.headers['x-csrf-token']
-        request.headers['x-csrf-token'] = self.ct0
+        del request.twitter_headers['cookie']
+        request.twitter_headers['cookie'] = f'auth_token=' + self.auth_token + '; ct0=' + self.ct0
+        del request.twitter_headers['x-csrf-token']
+        request.twitter_headers['x-csrf-token'] = self.ct0
 
     def solve_captcha(self,
-                      account_token: str,
                       proxy: str | None) -> None:
         try:
             captcha_result: str = ''
@@ -67,17 +66,18 @@ class SolveCaptcha:
                 task_id, response_text = create_task()
 
                 if not task_id:
-                    logger.error(f'{account_token} | Ошибка при создании Task на решение капчи, ответ: {response_text}')
+                    logger.error(
+                        f'{self.auth_token} | Ошибка при создании Task на решение капчи, ответ: {response_text}')
                     continue
 
                 task_result, response_text = get_task_result(task_id=task_id)
 
                 if not task_result:
-                    logger.error(f'{account_token} | Ошибка при решении капчи, ответ: {response_text}')
+                    logger.error(f'{self.auth_token} | Ошибка при решении капчи, ответ: {response_text}')
                     continue
 
                 captcha_result: str = response_text
-                logger.info(f'{account_token} | Решение капчи получено, пробую отправить')
+                logger.info(f'{self.auth_token} | Решение капчи получено, пробую отправить')
                 break
 
             if proxy:
@@ -125,7 +125,8 @@ class SolveCaptcha:
 
                 try:
                     element = driver.find_element(By.XPATH,
-                                                  '//input[@type="submit" and contains(@class, "Button EdgeButton EdgeButton--primary")]')
+                                                  '//input[@type="submit" and contains(@class, "Button EdgeButton '
+                                                  'EdgeButton--primary")]')
 
                 except NoSuchElementException:
                     pass
@@ -157,16 +158,16 @@ class SolveCaptcha:
                 sleep(1)
 
             else:
-                logger.error(f'{account_token} | Не удалось дождаться капчи Twitter')
+                logger.error(f'{self.auth_token} | Не удалось дождаться капчи Twitter')
                 return
 
             if home_page:
-                logger.success(f'{account_token} | Аккаунт успешно разморожен')
+                logger.success(f'{self.auth_token} | Аккаунт успешно разморожен')
                 return
 
             if element.get_attribute('value') and element.get_attribute('value') == 'Continue to Twitter':
                 element.click()
-                logger.success(f'{account_token} | Аккаунт успешно разморожен')
+                logger.success(f'{self.auth_token} | Аккаунт успешно разморожен')
                 return
 
             elif element.get_attribute('value') and element.get_attribute('value') == 'Start':
@@ -179,7 +180,7 @@ class SolveCaptcha:
                 'parent.postMessage(JSON.stringify({eventId:"challenge-complete",payload:{sessionToken:"' + captcha_result + '"}}),"*")')
             wait.until(EC.url_contains("https://twitter.com/home"))
 
-            logger.success(f'{account_token} | Аккаунт успешно разморожен')
+            logger.success(f'{self.auth_token} | Аккаунт успешно разморожен')
 
         except Exception as error:
-            logger.error(f'{account_token} | Неизвестная ошибка при попытке разморозить аккаунт: {error}')
+            logger.error(f'{self.auth_token} | Неизвестная ошибка при попытке разморозить аккаунт: {error}')

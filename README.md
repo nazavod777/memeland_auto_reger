@@ -6,7 +6,8 @@
 **FIRSTCAPTCHA_API_KEY** - _API KEY с https://1stcaptcha.com/ (не забудьте пополнить баланс)_  
 **CHANGE_PROXY_URL** - _Ссылка для смены IP при использовании мобильных прокси со сменой по ссылке_  
 **REPATS_COUNT** - _Количество попыток для повторения выполнения скрипта в случае ошибки_
-**SLEEP_BETWEEN_TASKS** - _Время сна между выполнением заданий MEME_  
+**ACCOUNT_TOO_NEW_ATTEMPTS** - _Количество попыток повторного выполнения авторизации MEME при ошибке Account Too New_  
+**SLEEP_BETWEEN_TASKS** - _Время сна между выполнением заданий MEME (число, ex: 1, 5, 10 // диапазон, ex: 1-5, 5-7, 2-6)_  
 **SLEEP_AFTER_PROXY_CHANGING** - _Время сна после смены Proxy_  
 
 ### accounts.txt  

@@ -4,11 +4,13 @@ from random import randint
 
 import aiohttp
 import better_automation.twitter.api
+import better_automation.twitter.errors
 from better_automation import TwitterAPI
+from better_proxy import Proxy
 
 import config
-from utils import get_connector
-from utils import logger
+from core import SolveCaptcha
+from utils import get_connector, logger
 
 
 class StartSubs:
@@ -21,12 +23,30 @@ class StartSubs:
         self.proxies_list = account_data['proxies_list']
         self.subs_count: int = account_data['subs_count']
 
+        self.current_account_proxy: str | None = None
+
         if self.target_account_token in self.account_list:
             self.account_list.remove(self.target_account_token)
 
     async def get_account_username(self) -> str:
-        account_username: str = await self.twitter_client.request_username()
-        return account_username
+        while True:
+            try:
+                account_username: str = await self.twitter_client.request_username()
+
+            except better_automation.twitter.errors.Forbidden as error:
+                if 326 in error.api_codes:
+                    logger.info(f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
+
+                    SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                 ct0=self.twitter_client.ct0).solve_captcha(
+                        proxy=Proxy.from_str(
+                            proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
+                    continue
+
+                raise better_automation.twitter.errors.Forbidden(error.response)
+
+            else:
+                return account_username
 
     async def subscribe_account(self,
                                 target_username: str) -> None:
@@ -42,11 +62,12 @@ class StartSubs:
 
             try:
                 random_token: str = local_accounts_list.pop(randint(0, len(local_accounts_list) - 1))
+                temp_twitter_proxy: str | None = next(self.proxies_list) if self.proxies_list else None
 
                 async with aiohttp.ClientSession(
-                        connector=await get_connector(proxy=next(
-                            self.proxies_list) if self.proxies_list else await get_connector(
-                            proxy=None))) as aiohttp_twitter_session:
+                        connector=await get_connector(
+                            proxy=temp_twitter_proxy if temp_twitter_proxy else await get_connector(
+                                proxy=None))) as aiohttp_twitter_session:
 
                     temp_twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                         session=aiohttp_twitter_session,
@@ -66,37 +87,55 @@ class StartSubs:
                     if not self.twitter_client.ct0:
                         self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
 
-                    try:
-                        await temp_twitter_client.follow(
-                            user_id=await temp_twitter_client.request_user_id(username=target_username))
+                    while True:
+                        try:
+                            await temp_twitter_client.follow(
+                                user_id=await temp_twitter_client.request_user_id(username=target_username))
 
-                    except KeyError as error:
-                        if error.args[0] in ['rest_id',
-                                             'user_result_by_screen_name']:
-                            logger.error(f'{temp_twitter_client.auth_token} | Не удалось найти пользователя '
-                                         f'{target_username}')
-                            return
+                        except better_automation.twitter.errors.Forbidden as error:
+                            if 326 in error.api_codes:
+                                logger.info(
+                                    f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                        else:
+                                SolveCaptcha(auth_token=temp_twitter_client.auth_token,
+                                             ct0=temp_twitter_client.ct0).solve_captcha(
+                                    proxy=Proxy.from_str(
+                                        proxy=temp_twitter_proxy).as_url if temp_twitter_proxy else None)
+                                continue
+
+                            raise better_automation.twitter.errors.Forbidden(error.response)
+
+                        except KeyError as error:
+                            if error.args[0] in ['rest_id',
+                                                 'user_result_by_screen_name']:
+                                logger.error(f'{temp_twitter_client.auth_token} | Не удалось найти пользователя '
+                                             f'{target_username}')
+                                return
+
+                            else:
+                                logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
+                                             f'{target_username}: {error}')
+
+                        except Exception as error:
                             logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                          f'{target_username}: {error}')
 
-                    except Exception as error:
-                        logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
-                                     f'{target_username}: {error}')
-
-                    else:
-                        logger.success(f'{temp_twitter_client.auth_token} | Успешно подписался на {target_username} '
-                                       f'| {i + 1}/{self.subs_count}')
-                        i += 1
+                        else:
+                            logger.success(
+                                f'{temp_twitter_client.auth_token} | Успешно подписался на {target_username} '
+                                f'| {i + 1}/{self.subs_count}')
+                            i += 1
+                            break
 
             except Exception as error:
                 logger.error(f'{random_token} | Неизвестная ошибка при подписке на {target_username}: {error} ')
 
     async def start_subs(self):
+        self.current_account_proxy: str | None = next(self.proxies_list) if self.proxies_list else None
+
         async with aiohttp.ClientSession(
                 connector=await get_connector(
-                    proxy=next(self.proxies_list)) if self.proxies_list else await get_connector(
+                    proxy=self.current_account_proxy) if self.current_account_proxy else await get_connector(
                     proxy=None)) as aiohttp_twitter_session:
             self.twitter_client: better_automation.twitter.api.TwitterAPI = TwitterAPI(
                 session=aiohttp_twitter_session,

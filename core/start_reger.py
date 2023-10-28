@@ -433,6 +433,11 @@ class Reger:
 
                     tasks_dict: dict = self.get_tasks()
                     twitter_username, twitter_account_name = self.get_twitter_account_names()
+                    all_tasks: list = tasks_dict['tasks'] + tasks_dict['timely']
+
+                    if len(all_tasks) - sum([current_task['completed'] for current_task in all_tasks]) == 0:
+                        logger.info(f'{self.account_token} | Все задания успешно выполнены')
+                        return True
 
                     for current_task in tasks_dict['tasks'] + tasks_dict['timely']:
                         if current_task['completed']:

@@ -458,7 +458,7 @@ class Reger:
                                                              encoding='utf-8-sig') as f:
                                         await f.write(
                                             f'{self.account_token};{self.account_proxy if self.account_proxy else ""};'
-                                            '{account.key.hex()}\n')
+                                            f'{account.key.hex()}\n')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:

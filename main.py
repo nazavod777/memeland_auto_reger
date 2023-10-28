@@ -1,13 +1,18 @@
+import asyncio
 import itertools
 from copy import deepcopy
 from multiprocessing.dummy import Pool
 from random import randint
 from sys import exit
+from sys import platform
 
 import config
 from core import start_reger_wrapper
 from twitter_core import start_subs
 from utils import format_range, logger, validate_token
+
+if platform == "windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 if __name__ == '__main__':
     print('Donate (any EVM) - 0xDEADf12DE9A24b47Da0a43E1bA70B8972F5296F2\n')

@@ -1,9 +1,15 @@
+import asyncio
+from sys import platform
+
 import aiohttp
 import aiohttp.client
 from pyuseragents import random as random_useragent
 
 from headers import meme_headers
 from utils import get_connector
+
+if platform == "windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 async def get_meme_session(account_proxy: str | None) -> aiohttp.client.ClientSession:

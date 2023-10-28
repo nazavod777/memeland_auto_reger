@@ -1,6 +1,7 @@
 import asyncio
 from copy import deepcopy
 from random import randint
+from sys import platform
 
 import aiohttp
 import better_automation.twitter.api
@@ -11,6 +12,9 @@ from better_proxy import Proxy
 import config
 from core import SolveCaptcha
 from utils import get_connector, logger
+
+if platform == "windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 class StartSubs:

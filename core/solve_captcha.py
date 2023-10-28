@@ -1,3 +1,5 @@
+import asyncio
+from sys import platform
 from time import sleep
 
 import requests
@@ -9,6 +11,9 @@ from seleniumwire import webdriver
 
 import config
 from utils import logger
+
+if platform == "windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 def create_task() -> tuple[int | bool, str]:

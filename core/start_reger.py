@@ -1,5 +1,6 @@
 import asyncio
 from random import choice
+from sys import platform
 from time import sleep
 from urllib.parse import urlparse, parse_qs
 
@@ -25,6 +26,9 @@ from utils import generate_eth_account, get_account
 from utils import get_connector
 from utils import logger
 from .solve_captcha import SolveCaptcha
+
+if platform == "windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 class Reger:

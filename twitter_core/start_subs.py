@@ -57,6 +57,18 @@ class StartSubs:
                     await f.write(f'{self.target_account_token}\n')
                     return None
 
+            except better_automation.twitter.errors.HTTPException as error:
+                if 326 in error.api_codes:
+                    logger.info(f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
+
+                    SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                 ct0=self.twitter_client.ct0).solve_captcha(
+                        proxy=Proxy.from_str(
+                            proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
+                    continue
+
+                raise better_automation.twitter.errors.HTTPException(error.response)
+
             else:
                 return account_username
 
@@ -117,6 +129,26 @@ class StartSubs:
 
                             raise better_automation.twitter.errors.Forbidden(error.response)
 
+                        except better_automation.twitter.errors.Unauthorized:
+                            logger.error(f'{temp_twitter_client.auth_token} | Invalid Token')
+
+                            async with aiofiles.open('invalid_tokens.txt', 'a', encoding='utf-8-sig') as f:
+                                await f.write(f'{temp_twitter_client.auth_token}\n')
+                                return
+
+                        except better_automation.twitter.errors.HTTPException as error:
+                            if 326 in error.api_codes:
+                                logger.info(
+                                    f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
+
+                                SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                             ct0=self.twitter_client.ct0).solve_captcha(
+                                    proxy=Proxy.from_str(
+                                        proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
+                                continue
+
+                            raise better_automation.twitter.errors.HTTPException(error.response)
+
                         except KeyError as error:
                             if error.args[0] in ['rest_id',
                                                  'user_result_by_screen_name']:
@@ -127,13 +159,6 @@ class StartSubs:
                             else:
                                 logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                              f'{target_username}: {error}')
-
-                        except better_automation.twitter.errors.Unauthorized:
-                            logger.error(f'{temp_twitter_client.auth_token} | Invalid Token')
-
-                            async with aiofiles.open('invalid_tokens.txt', 'a', encoding='utf-8-sig') as f:
-                                await f.write(f'{temp_twitter_client.auth_token}\n')
-                                return
 
                         except Exception as error:
                             logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '

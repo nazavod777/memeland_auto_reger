@@ -41,6 +41,7 @@ class Reger:
         self.twitter_client: better_automation.twitter.api.TwitterAPI | None = None
         self.meme_client: tls_client.sessions.Session | None = None
         self.account_too_new_attempts: int = 0
+        self.unauthorized_attempts: int = 0
 
     def get_tasks(self) -> dict:
         r = self.meme_client.get(url='https://memefarm-api.memecoin.org/user/tasks',
@@ -602,6 +603,12 @@ class Reger:
             except (Unauthorized, better_automation.twitter.errors.Unauthorized,
                     better_automation.twitter.errors.HTTPException):
                 logger.error(f'{self.account_token} | Unauthorized')
+
+                if self.unauthorized_attempts >= config.UNAUTHORIZED_ATTEMPTS:
+                    logger.error(f'{self.account_token} | Empty Attempts')
+                    return False
+
+                self.unauthorized_attempts += 1
                 continue
 
             except AccountSuspended as error:

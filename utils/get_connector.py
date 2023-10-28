@@ -16,8 +16,8 @@ async def get_connector(proxy: str | None) -> TCPConnector | ProxyConnector:
         if proxy and proxy.startswith('https://'):
             proxy: str = proxy.replace('https://', 'http://')
 
-        connector: ProxyConnector | None = ProxyConnector.from_url(url=Proxy.from_str(proxy=proxy).as_url,
-                                                                   verify_ssl=False) if proxy else TCPConnector(
+        connector: ProxyConnector | TCPConnector = ProxyConnector.from_url(url=Proxy.from_str(proxy=proxy).as_url,
+                                                                           verify_ssl=False) if proxy else TCPConnector(
             verify_ssl=False)
         return connector
 

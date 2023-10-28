@@ -3,6 +3,7 @@ from copy import deepcopy
 from random import randint
 from sys import platform
 
+import aiofiles
 import aiohttp
 import better_automation.twitter.api
 import better_automation.twitter.errors
@@ -32,7 +33,7 @@ class StartSubs:
         if self.target_account_token in self.account_list:
             self.account_list.remove(self.target_account_token)
 
-    async def get_account_username(self) -> str:
+    async def get_account_username(self) -> str | None:
         while True:
             try:
                 account_username: str = await self.twitter_client.request_username()
@@ -48,6 +49,13 @@ class StartSubs:
                     continue
 
                 raise better_automation.twitter.errors.Forbidden(error.response)
+
+            except better_automation.twitter.errors.Unauthorized:
+                logger.error(f'{self.target_account_token} | Invalid Token')
+
+                async with aiofiles.open('invalid_tokens.txt', 'a', encoding='utf-8-sig') as f:
+                    await f.write(f'{self.target_account_token}\n')
+                    return None
 
             else:
                 return account_username
@@ -120,6 +128,13 @@ class StartSubs:
                                 logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                              f'{target_username}: {error}')
 
+                        except better_automation.twitter.errors.Unauthorized:
+                            logger.error(f'{temp_twitter_client.auth_token} | Invalid Token')
+
+                            async with aiofiles.open('invalid_tokens.txt', 'a', encoding='utf-8-sig') as f:
+                                await f.write(f'{temp_twitter_client.auth_token}\n')
+                                return
+
                         except Exception as error:
                             logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                          f'{target_username}: {error}')
@@ -148,7 +163,10 @@ class StartSubs:
             if not self.twitter_client.ct0:
                 self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
 
-            account_username: str = await self.get_account_username()
+            account_username: str | None = await self.get_account_username()
+
+            if not account_username:
+                return
 
         await self.subscribe_account(target_username=account_username)
 

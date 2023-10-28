@@ -161,19 +161,32 @@ class Reger:
     async def share_message(self,
                             share_message: str,
                             verify_url: str) -> tuple[bool, str, int]:
-        try:
-            create_tweet_status, tweet_id = await self.create_tweet(share_message=share_message)
+        while True:
+            try:
+                create_tweet_status, tweet_id = await self.create_tweet(share_message=share_message)
 
-        except better_automation.twitter.errors.HTTPException as error:
-            if 187 in error.api_codes:
-                pass
+            except better_automation.twitter.errors.HTTPException as error:
+                if 187 in error.api_codes:
+                    pass
+
+                elif 326 in error.api_codes:
+                    logger.info(
+                        f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
+
+                    SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                 ct0=self.twitter_client.ct0).solve_captcha(
+                        proxy=Proxy.from_str(
+                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                    continue
+
+                else:
+                    raise better_automation.twitter.errors.HTTPException(error.response)
 
             else:
-                raise better_automation.twitter.errors.HTTPException(error.response)
+                if not create_tweet_status:
+                    return False, tweet_id, 0
 
-        else:
-            if not create_tweet_status:
-                return False, tweet_id, 0
+                break
 
         while True:
             r = self.meme_client.post(url=verify_url,
@@ -610,6 +623,19 @@ class Reger:
 
                 self.unauthorized_attempts += 1
                 continue
+
+            except better_automation.twitter.errors.HTTPException as error:
+                if 326 in error.api_codes:
+                    logger.info(
+                        f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
+
+                    SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                 ct0=self.twitter_client.ct0).solve_captcha(
+                        proxy=Proxy.from_str(
+                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                    continue
+
+                raise better_automation.twitter.errors.HTTPException(error.response)
 
             except AccountSuspended as error:
                 async with aiofiles.open('suspended_accounts.txt', 'a', encoding='utf-8-sig') as f:

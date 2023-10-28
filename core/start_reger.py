@@ -360,7 +360,6 @@ class Reger:
 
                     oauth_token: str = parse_qs(urlparse(location).query)['oauth_token'][0]
                     oauth_verifier: str = parse_qs(urlparse(location).query)['oauth_verifier'][0]
-                    access_token: str = ''
 
                     while self.account_too_new_attempts < config.ACCOUNT_TOO_NEW_ATTEMPTS:
                         self.meme_client = tls_client.Session(client_identifier=choice([
@@ -395,6 +394,7 @@ class Reger:
                                                   })
 
                         if r.json().get('error', '') == 'account_too_new':
+                            self.account_too_new_attempts += 1
                             logger.error(f'{self.account_token} | Account Too New')
 
                             continue

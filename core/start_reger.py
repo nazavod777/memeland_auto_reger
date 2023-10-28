@@ -218,7 +218,7 @@ class Reger:
 
     async def get_oauth_auth_tokens(self) -> tuple[str | None, str | None, str | None, str, int]:
         while True:
-            headers: dict = self.twitter_client.headers
+            headers: dict = self.twitter_client._headers
 
             if headers.get('content-type'):
                 del headers['content-type']
@@ -293,7 +293,7 @@ class Reger:
                                                       'oauth_token': oauth_token
                                                   },
                                                   headers={
-                                                      **self.twitter_client.headers,
+                                                      **self.twitter_client._headers,
                                                       'content-type': 'application/x-www-form-urlencoded'
                                                   })
 

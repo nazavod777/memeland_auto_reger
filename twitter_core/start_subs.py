@@ -127,14 +127,16 @@ class StartSubs:
                                         proxy=temp_twitter_proxy).as_url if temp_twitter_proxy else None)
                                 continue
 
-                            raise better_automation.twitter.errors.Forbidden(error.response)
+                            logger.error(f'{self.target_account_token} | {error}')
+                            break
 
                         except better_automation.twitter.errors.Unauthorized:
                             logger.error(f'{temp_twitter_client.auth_token} | Invalid Token')
 
                             async with aiofiles.open('invalid_tokens.txt', 'a', encoding='utf-8-sig') as f:
                                 await f.write(f'{temp_twitter_client.auth_token}\n')
-                                return
+
+                            break
 
                         except better_automation.twitter.errors.HTTPException as error:
                             if 326 in error.api_codes:
@@ -147,7 +149,8 @@ class StartSubs:
                                         proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
                                 continue
 
-                            raise better_automation.twitter.errors.HTTPException(error.response)
+                            logger.error(f'{self.target_account_token} | {error}')
+                            break
 
                         except KeyError as error:
                             if error.args[0] in ['rest_id',
@@ -159,10 +162,12 @@ class StartSubs:
                             else:
                                 logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                              f'{target_username}: {error}')
+                            break
 
                         except Exception as error:
                             logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                          f'{target_username}: {error}')
+                            break
 
                         else:
                             logger.success(

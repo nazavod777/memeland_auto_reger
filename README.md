@@ -6,7 +6,7 @@
 ![alt text](https://i.imgur.com/1yX3NAx.png)
 # Только 3.11.6 Python-версия
 
-### CONFIG.PY  
+### config.py  
 **SITE_KEY** - _SITEKEY для решения капчи Twitter при разморозке аккаунта, не менять_  
 **SITE_URL** - _SITEURL Twitter для разморозки аккаунта, не менять_  
 **FIRSTCAPTCHA_API_KEY** - _API KEY с https://1stcaptcha.com/ (не забудьте пополнить баланс)_  

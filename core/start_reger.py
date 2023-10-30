@@ -81,7 +81,9 @@ class Reger:
 
             elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
                 logger.error(f'{self.account_token} | Unauthorized')
+                # noinspection PyTypeHints
                 r.status: int = r.status_code
+                # noinspection PyTypeHints
                 r.reason: str = ''
                 raise better_automation.twitter.errors.Unauthorized(r)
 
@@ -149,7 +151,9 @@ class Reger:
                 continue
 
             elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                # noinspection PyTypeHints
                 r.status: int = r.status_code
+                # noinspection PyTypeHints
                 r.reason: str = ''
                 raise better_automation.twitter.errors.Unauthorized(r)
 
@@ -205,7 +209,9 @@ class Reger:
                 continue
 
             elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                # noinspection PyTypeHints
                 r.status: int = r.status_code
+                # noinspection PyTypeHints
                 r.reason: str = ''
                 raise better_automation.twitter.errors.Unauthorized(r)
 
@@ -224,7 +230,9 @@ class Reger:
                 continue
 
             elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                # noinspection PyTypeHints
                 r.status: int = r.status_code
+                # noinspection PyTypeHints
                 r.reason: str = ''
                 raise better_automation.twitter.errors.Unauthorized(r)
 
@@ -264,7 +272,8 @@ class Reger:
                 }) as aiohttp_temp_twitter_session:
             async with aiohttp_temp_twitter_session.get(url='https://twitter.com/account/access') as r:
                 elements = BeautifulSoup(await r.text(), 'lxml').find_all('input', {'type': 'submit',
-                                                                                    'class': 'Button EdgeButton EdgeButton--primary'}) \
+                                                                                    'class': 'Button EdgeButton '
+                                                                                             'EdgeButton--primary'}) \
                            + BeautifulSoup(await r.text(), 'lxml').find_all('iframe', {
                     'id': 'arkose_iframe'
                 })
@@ -305,7 +314,9 @@ class Reger:
 
             elif r.json().get('error', '') in ['unauthorized',
                                                'Unauthorized']:
+                # noinspection PyTypeHints
                 r.status: int = r.status_code
+                # noinspection PyTypeHints
                 r.reason: str = ''
                 raise better_automation.twitter.errors.Unauthorized(r)
 
@@ -328,6 +339,7 @@ class Reger:
                         auth_token=self.account_token)
 
                     if not self.twitter_client.ct0:
+                        # noinspection PyProtectedMember
                         self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
 
                     bind_data = {

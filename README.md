@@ -12,6 +12,7 @@
 **UNAUTHORIZED_ATTEMPTS** - _Количество попыток повторого выполнения действий при ошибке Unauthorized_  
 **SLEEP_BETWEEN_TASKS** - _Время сна между выполнением заданий MEME (число, ex: 1, 5, 10 // диапазон, ex: 1-5, 5-7, 2-6)_  
 **SLEEP_AFTER_PROXY_CHANGING** - _Время сна после смены Proxy_  
+**GM_PHRASES_LIST** - _Список фраз для отправки комментария под GM-постом_
 
 ### accounts.txt  
 _Заполняем **auth_token**'s от аккаунтов, каждый с новой строки_  
@@ -27,5 +28,13 @@ _**empty_attemps.txt** - файл с токенами аккаунтов, поп
 _**registered.txt** - файл успешно зарегистрированных аккаунтов_  
 _**suspended_accounts.txt** - файл токенов аккаунтов, заблокированных в Twitter_  
 _**account_too_new.txt** - Файл токенов аккаунтов, не подходящих по параметрам_
+_**unauthorized_accounts.txt** - Файл токенов аккаунтов с ошибкой Unauthorized_  
+_**forbidden_accounts.txt** - Файл токенов аккаунтов с ошибкой Forbidden_  
+_**http_exceptions.txt** - Файл токенов аккаунтов с ошибкой HTTP Exception_
+_**unexpected_errors.txt** - Файл токенов аккаунтов с непредвиденными ошибками_
+
+### errors  
+**Q: _SSL: CERTIFICATE_VERIFY_FAILED_**  
+**A: _MAC: open /Applications/Python\ 3.11/Install\ Certificates.command_**
 
 # DONATE (_any evm_) - 0xDEADf12DE9A24b47Da0a43E1bA70B8972F5296F2

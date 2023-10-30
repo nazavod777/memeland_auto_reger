@@ -3,6 +3,7 @@ from sys import platform
 from time import time
 
 import aiohttp
+# noinspection PyProtectedMember
 import playwright._impl._api_types
 from better_proxy import Proxy
 from playwright.async_api import async_playwright
@@ -18,7 +19,6 @@ if platform == "windows":
 async def create_task() -> tuple[int | bool, str]:
     async with aiohttp.ClientSession() as session:
         async with session.get(url='https://api.1stcaptcha.com/funcaptchatokentask',
-
                                params={
                                    'apikey': config.FIRSTCAPTCHA_API_KEY,
                                    'sitekey': config.SITE_KEY,
@@ -60,10 +60,12 @@ class SolveCaptcha:
             if url in page.url:
                 return True
             await asyncio.sleep(1)
+        # noinspection PyProtectedMember
         raise playwright._impl._api_types.TimeoutError(message='')
 
     async def wait_for_multiple_conditions(self,
                                            page, selector, url, timeout=60000) -> tuple[any, any]:
+        # noinspection PyProtectedMember
         try:
             element_task = asyncio.create_task(page.wait_for_selector(selector, timeout=timeout))
             url_task = asyncio.create_task(self.wait_for_url(page=page, url=url))
@@ -88,6 +90,7 @@ class SolveCaptcha:
 
     async def check_redirect(self,
                              page) -> bool:
+        # noinspection PyProtectedMember
         try:
             success_url_task = asyncio.create_task(self.wait_for_url(page=page, url='twitter.com/home'))
             fail_url_task = asyncio.create_task(self.wait_for_url(page=page, url='twitter.com/account/access'))
@@ -151,10 +154,11 @@ class SolveCaptcha:
                     await stealth_async(page)
                     await page.goto('https://twitter.com/account/access')
                     await page.wait_for_load_state(state='networkidle',
-                                                   timeout=180000)
+                                                   timeout=60000)
 
                     home_page, element = await self.wait_for_multiple_conditions(page=page,
-                                                                                 selector="#arkose_iframe, input[type='submit'].Button.EdgeButton.EdgeButton--primary",
+                                                                                 selector="#arkose_iframe, input["
+                                                                                          "type='submit'].Button.EdgeButton.EdgeButton--primary",
                                                                                  url="'twitter.com/home'")
 
                     if home_page:
@@ -201,9 +205,7 @@ class SolveCaptcha:
                         f'parent.postMessage(JSON.stringify({{eventId:"challenge-complete",payload:{{sessionToken:"{captcha_result}"}}}}),"*")')
 
                     await page.wait_for_load_state(state='networkidle',
-                                                   timeout=180000)
-                    await asyncio.sleep(delay=1)
-
+                                                   timeout=60000)
                     await self.wait_for_url(page=page,
                                             url='twitter.com/home',
                                             timeout=5)

@@ -109,6 +109,7 @@ class StartSubs:
                             await asyncio.sleep(delay=config.SLEEP_AFTER_PROXY_CHANGING)
 
                     if not self.twitter_client.ct0:
+                        # noinspection PyProtectedMember
                         self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
 
                     while True:
@@ -146,7 +147,8 @@ class StartSubs:
                                 await SolveCaptcha(auth_token=self.twitter_client.auth_token,
                                                    ct0=self.twitter_client.ct0).solve_captcha(
                                     proxy=Proxy.from_str(
-                                        proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
+                                        proxy=self.current_account_proxy).as_url if self.current_account_proxy
+                                    else None)
                                 continue
 
                             logger.error(f'{self.target_account_token} | {await error.response.text()}')
@@ -191,6 +193,7 @@ class StartSubs:
                 auth_token=self.target_account_token)
 
             if not self.twitter_client.ct0:
+                # noinspection PyProtectedMember
                 self.twitter_client.set_ct0(await self.twitter_client._request_ct0())
 
             account_username: str | None = await self.get_account_username()

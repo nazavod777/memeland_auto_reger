@@ -8,7 +8,7 @@ from sys import platform
 
 import config
 from core import start_reger_wrapper
-from twitter_core import start_subs
+from twitter_core import start_subs, say_gm
 from utils import format_range, logger, validate_token
 
 if platform == "windows":
@@ -36,6 +36,7 @@ if __name__ == '__main__':
 
     user_action: int = int(input('\n1. Запуск накрутки MEMELand\n'
                                  '2. Подписка между аккаунтами Twitter\n'
+                                 '3. Say GM\n'
                                  'Введите ваше действие: '))
 
     threads: int = 1 if config.CHANGE_PROXY_URL else int(input('Threads: '))
@@ -86,6 +87,24 @@ if __name__ == '__main__':
 
             with Pool(processes=threads) as executor:
                 executor.map(start_subs, formatted_accounts_list)
+
+        case 3:
+            print()
+
+            formatted_accounts_list: list = [
+                {
+                    'account_token': current_account,
+                    'account_proxy': next(cycled_proxies_list) if cycled_proxies_list else None,
+                } for current_account in accounts_list
+            ]
+
+            with Pool(processes=threads) as executor:
+                tasks_result: list = executor.map(say_gm, formatted_accounts_list)
+
+            success_count: int = sum(tasks_result) if tasks_result.count(True) else 0
+            fail_count: int = len(tasks_result) - success_count
+
+            logger.info(f'Статистика работы: {success_count} SUCCESS | {fail_count} FAILED')
 
     logger.success('Работа успешно завершена')
     input('\nPress Enter To Exit..')

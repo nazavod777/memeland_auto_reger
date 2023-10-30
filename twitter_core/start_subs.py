@@ -1,3 +1,4 @@
+import traceback
 import asyncio
 from copy import deepcopy
 from random import randint
@@ -169,6 +170,7 @@ class StartSubs:
                         except Exception as error:
                             logger.error(f'{temp_twitter_client.auth_token} | Не удалось подписаться на '
                                          f'{target_username}: {error}')
+                            print(traceback.print_exc())
                             break
 
                         else:
@@ -180,6 +182,7 @@ class StartSubs:
 
             except Exception as error:
                 logger.error(f'{random_token} | Неизвестная ошибка при подписке на {target_username}: {error} ')
+                print(traceback.print_exc())
 
     async def start_subs(self):
         self.current_account_proxy: str | None = next(self.proxies_list) if self.proxies_list else None
@@ -210,3 +213,4 @@ def start_subs(account_data: dict) -> None:
 
     except Exception as error:
         logger.error(f'{account_data["target_account_token"]} | Неизвестная ошибка при обработке аккаунта: {error}')
+        print(traceback.print_exc())

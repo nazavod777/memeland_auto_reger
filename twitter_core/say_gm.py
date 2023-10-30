@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from random import choice
 from sys import platform
 
@@ -128,6 +129,7 @@ class SayGM:
 
             except Exception as error:
                 logger.error(f'{self.account_token} | Ошибка при отправке комментария: {error}')
+                print(traceback.print_exc())
 
                 async with aiofiles.open(file='unexpected_errors.txt', mode='a', encoding='utf-8-sig') as f:
                     await f.write(f'{self.account_token}\n')
@@ -145,3 +147,4 @@ def say_gm(account_data: dict) -> bool:
 
     except Exception as error:
         logger.error(f'{account_data["account_token"]} | Неизвестная ошибка при обработке аккаунта: {error}')
+        print(traceback.print_exc())

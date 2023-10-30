@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from base64 import b64decode
 from random import choice
 from sys import platform
@@ -771,6 +772,7 @@ class Reger:
                     await f.write(f'{self.account_token}\n')
 
                 logger.error(f'{self.account_token} | Неизвестная ошибка при обработке аккаунта: {error}')
+                print(traceback.print_exc())
                 return False
 
             else:
@@ -802,3 +804,4 @@ def start_reger_wrapper(source_data: dict) -> bool:
 
     except Exception as error:
         logger.error(f'{source_data["account_token"]} | Неизвестная ошибка: {error}')
+        print(traceback.print_exc())

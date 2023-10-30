@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from sys import platform
 from time import time
 
@@ -215,6 +216,7 @@ class SolveCaptcha:
 
             except Exception as error:
                 logger.error(f'{self.auth_token} | Неизвестная ошибка при попытке разморозить аккаунт: {error}')
+                print(traceback.print_exc())
                 continue
 
             else:

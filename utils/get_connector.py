@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from sys import platform
 
 from aiohttp import TCPConnector
@@ -23,5 +24,6 @@ async def get_connector(proxy: str | None) -> TCPConnector | ProxyConnector:
 
     except Exception as error:
         logger.error(f'Ошибка при получении Connector\'a: {error}, работаю без Proxy')
+        print(traceback.print_exc())
 
         return TCPConnector(verify_ssl=False)

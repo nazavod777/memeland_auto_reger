@@ -33,8 +33,8 @@ _**suspended_accounts.txt** - файл токенов аккаунтов, заб
 _**account_too_new.txt** - Файл токенов аккаунтов, не подходящих по параметрам_
 _**unauthorized_accounts.txt** - Файл токенов аккаунтов с ошибкой Unauthorized_  
 _**forbidden_accounts.txt** - Файл токенов аккаунтов с ошибкой Forbidden_  
-_**http_exceptions.txt** - Файл токенов аккаунтов с ошибкой HTTP Exception_
-_**unexpected_errors.txt** - Файл токенов аккаунтов с непредвиденными ошибками_
+_**http_exceptions.txt** - Файл токенов аккаунтов с ошибкой HTTP Exception_  
+_**unexpected_errors.txt** - Файл токенов аккаунтов с непредвиденными ошибками_  
 
 ### errors  
 **Q: _SSL: CERTIFICATE_VERIFY_FAILED_**  

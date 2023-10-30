@@ -449,7 +449,7 @@ class Reger:
         return await self.make_old_auth(oauth_token=oauth_token,
                                         oauth_verifier=oauth_verifier)
 
-    async def request_access_token(self, bind_code: str) -> tuple[int, str, Response | ClientResponse]:
+    async def request_access_token(self, bind_code: str) -> tuple[int, str, Response | ClientResponse | None]:
         for _ in range(config.REPEATS_ATTEMPTS):
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/twitter-auth',
                                       json={
@@ -501,6 +501,8 @@ class Reger:
             async with aiofiles.open(file='empty_attempts.txt', mode='a', encoding='utf-8-sig') as f:
                 await f.write(f'{self.account_token}\n')
 
+            return 2, '', None
+
     async def start_reger(self) -> bool:
         for _ in range(config.REPEATS_ATTEMPTS):
             try:
@@ -540,8 +542,19 @@ class Reger:
                         return False
 
                     elif status == 2:
-                        logger.error(f'{self.account_token} | Неизвестный ответ при авторизации MEME: '
-                                     f'{r.text if type(r) == Response else await r.text()}')
+                        if not r:
+                            response_text: str = ''
+
+                        elif isinstance(r, Response):
+                            response_text: str == r.text
+
+                        elif isinstance(r, ClientResponse):
+                            response_text: str == await r.text()
+
+                        else:
+                            response_text: str = ''
+
+                        logger.error(f'{self.account_token} | Неизвестный ответ при авторизации MEME: {response_text}')
                         continue
 
                     self.meme_client.headers.update({

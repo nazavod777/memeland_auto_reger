@@ -200,6 +200,11 @@ class SolveCaptcha:
                         break
 
                     iframe_element = await page.query_selector('#arkose_iframe')
+
+                    if not iframe_element:
+                        logger.error(f'{self.auth_token} | Не удалось обнаружить элемент с капчей на странице')
+                        continue
+
                     iframe = await iframe_element.content_frame()
 
                     await iframe.evaluate(

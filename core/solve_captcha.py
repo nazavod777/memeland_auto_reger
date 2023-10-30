@@ -128,7 +128,7 @@ class SolveCaptcha:
                             "password": Proxy.from_str(proxy=proxy).password,
                         }
 
-                    context = await p.chromium.launch_persistent_context(**context_options)
+                    context = await p.firefox.launch_persistent_context(**context_options)
 
                     await context.add_cookies(
                         [

@@ -6,3 +6,4 @@ REPEATS_ATTEMPTS: int = 5
 UNAUTHORIZED_ATTEMPTS: int = 3
 SLEEP_BETWEEN_TASKS: int | str | None = 0
 SLEEP_AFTER_PROXY_CHANGING: int | None = 0
+GM_PHRASES_LIST: list = ['gm', 'gM', 'Gm', 'GM', 'GM fam', 'gm FAM', 'gm fam', 'Gm Fam!']

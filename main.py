@@ -55,8 +55,8 @@ if __name__ == '__main__':
             with Pool(processes=threads) as executor:
                 tasks_result: list = executor.map(start_reger_wrapper, formatted_accounts_list)
 
-            success_count: int = sum(tasks_result)
-            fail_count: int = len(tasks_result) - sum(tasks_result)
+            success_count: int = sum(tasks_result) if tasks_result.count(True) else 0
+            fail_count: int = len(tasks_result) - success_count
 
             logger.info(f'Статистика работы: {success_count} SUCCESS | {fail_count} FAILED')
 

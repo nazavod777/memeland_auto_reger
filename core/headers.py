@@ -12,9 +12,9 @@ twitter_headers: dict = {
 }
 
 meme_headers: dict = {
+    'accept': 'application/json',
+    'accept-language': 'ru,en;q=0.9,vi;q=0.8,es;q=0.7,cy;q=0.6',
     'content-type': 'application/json',
     'origin': 'https://www.memecoin.org',
-    'referer': 'https://www.memecoin.org/',
-    'accept': 'application/json',
-    'accept-language': 'ru,en;q=0.9,vi;q=0.8,es;q=0.7,cy;q=0.6'
+    'referer': 'https://www.memecoin.org/'
 }

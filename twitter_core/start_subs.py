@@ -42,8 +42,8 @@ class StartSubs:
                 if 326 in error.api_codes:
                     logger.info(f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                 ct0=self.twitter_client.ct0).solve_captcha(
+                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                       ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
                             proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
                     continue
@@ -61,8 +61,8 @@ class StartSubs:
                 if 326 in error.api_codes:
                     logger.info(f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                 ct0=self.twitter_client.ct0).solve_captcha(
+                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                       ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
                             proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
                     continue
@@ -121,8 +121,8 @@ class StartSubs:
                                 logger.info(
                                     f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                                SolveCaptcha(auth_token=temp_twitter_client.auth_token,
-                                             ct0=temp_twitter_client.ct0).solve_captcha(
+                                await SolveCaptcha(auth_token=temp_twitter_client.auth_token,
+                                                   ct0=temp_twitter_client.ct0).solve_captcha(
                                     proxy=Proxy.from_str(
                                         proxy=temp_twitter_proxy).as_url if temp_twitter_proxy else None)
                                 continue
@@ -143,13 +143,13 @@ class StartSubs:
                                 logger.info(
                                     f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                                SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                             ct0=self.twitter_client.ct0).solve_captcha(
+                                await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                                   ct0=self.twitter_client.ct0).solve_captcha(
                                     proxy=Proxy.from_str(
                                         proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
                                 continue
 
-                            logger.error(f'{self.target_account_token} | {error}')
+                            logger.error(f'{self.target_account_token} | {await error.response.text()}')
                             break
 
                         except KeyError as error:

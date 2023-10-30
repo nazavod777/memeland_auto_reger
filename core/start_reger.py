@@ -482,7 +482,7 @@ class Reger:
                     logger.error(f'{self.account_token} | Неизвестный ответ при авторизации MEME: {r.text}')
                     continue
 
-                continue
+                return status, access_token, r
 
             elif r.json().get('error', '') in ['unauthorized',
                                                'Unauthorized']:

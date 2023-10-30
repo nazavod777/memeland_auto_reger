@@ -475,10 +475,7 @@ class Reger:
                              f'авторизоваться старым способом')
                 status, access_token, r = await self.request_access_token_old()
 
-                if status == 1:
-                    return 1, '', r
-
-                elif status == 2:
+                if status == 2:
                     logger.error(f'{self.account_token} | Неизвестный ответ при авторизации MEME: {r.text}')
                     continue
 

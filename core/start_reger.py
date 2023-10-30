@@ -449,7 +449,7 @@ class Reger:
                                         oauth_verifier=oauth_verifier)
 
     async def request_access_token(self, bind_code: str) -> tuple[int, str, Response | ClientResponse]:
-        while True:
+        for _ in range(config.REPEATS_ATTEMPTS):
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/twitter-auth',
                                       json={
                                           "code": bind_code,
@@ -495,6 +495,10 @@ class Reger:
                 return 0, r.json()['accessToken'], r
 
             return 2, '', r
+
+        else:
+            async with aiofiles.open(file='empty_attempts.txt', mode='a', encoding='utf-8-sig') as f:
+                await f.write(f'{self.account_token}\n')
 
     async def start_reger(self) -> bool:
         for _ in range(config.REPEATS_ATTEMPTS):

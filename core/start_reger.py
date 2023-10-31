@@ -549,10 +549,10 @@ class Reger:
                             response_text: str = ''
 
                         elif isinstance(r, Response):
-                            response_text: str == r.text
+                            response_text: str = r.text
 
                         elif isinstance(r, ClientResponse):
-                            response_text: str == await r.text()
+                            response_text: str = await r.text()
 
                         else:
                             response_text: str = ''

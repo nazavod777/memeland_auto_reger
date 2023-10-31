@@ -3,6 +3,7 @@ import traceback
 from sys import platform
 from time import time
 
+import aiofiles
 import aiohttp
 # noinspection PyProtectedMember
 import playwright._impl._api_types
@@ -116,7 +117,7 @@ class SolveCaptcha:
             return False
 
     async def solve_captcha(self, proxy: str | None) -> bool:
-        while True:
+        for _ in range(config.SOLVE_CAPTCHA_ATTEMPTS):
             try:
                 async with async_playwright() as p:
                     context_options = {
@@ -229,3 +230,9 @@ class SolveCaptcha:
 
             else:
                 return True
+
+        else:
+            async with aiofiles.open(file='empty_attempts.txt', mode='a', encoding='utf-8-sig') as f:
+                await f.write(f'{self.auth_token}\n')
+
+            logger.error(f'{self.auth_token} | Empty Attempts')

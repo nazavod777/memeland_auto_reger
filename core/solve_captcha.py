@@ -121,8 +121,7 @@ class SolveCaptcha:
                 async with async_playwright() as p:
                     context_options = {
                         'user_data_dir': '',
-                        'viewport': None
-
+                        'viewport': None,
                     }
 
                     if proxy:
@@ -160,7 +159,7 @@ class SolveCaptcha:
                     home_page, element = await self.wait_for_multiple_conditions(page=page,
                                                                                  selector="#arkose_iframe, input["
                                                                                           "type='submit'].Button.EdgeButton.EdgeButton--primary",
-                                                                                 url="'twitter.com/home'")
+                                                                                 url="twitter.com/home")
 
                     if home_page:
                         logger.success(f'{self.auth_token} | Аккаунт успешно разморожен')

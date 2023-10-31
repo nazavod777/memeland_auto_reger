@@ -12,6 +12,7 @@ from better_proxy import Proxy
 from bs4 import BeautifulSoup
 
 import config
+import exceptions
 from core import SolveCaptcha
 from utils import get_connector, logger
 
@@ -98,10 +99,11 @@ class SayGM:
                     logger.info(
                         f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                            proxy=self.account_proxy).as_url if self.account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 async with aiofiles.open(file='unauthorized_accounts.txt', mode='a', encoding='utf-8-sig') as f:
@@ -115,10 +117,11 @@ class SayGM:
                     logger.info(
                         f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                            proxy=self.account_proxy).as_url if self.account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 async with aiofiles.open(file='http_exceptions.txt', mode='a', encoding='utf-8-sig') as f:
@@ -144,6 +147,9 @@ class SayGM:
 def say_gm(account_data: dict) -> bool:
     try:
         return asyncio.run(SayGM(account_data=account_data).say_gm())
+
+    except exceptions.WrongCaptcha:
+        pass
 
     except Exception as error:
         logger.error(f'{account_data["account_token"]} | Неизвестная ошибка при обработке аккаунта: {error}')

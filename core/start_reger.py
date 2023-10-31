@@ -23,6 +23,7 @@ from tls_client.response import Response
 from web3.auto import w3
 
 import config
+import exceptions
 from exceptions import AccountSuspended
 from utils import format_range
 from utils import generate_eth_account, get_account
@@ -184,10 +185,12 @@ class Reger:
                     logger.info(
                         f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                            proxy=self.account_proxy).as_url if self.account_proxy else None):
+                        raise exceptions.WrongCaptcha()
+
                     continue
 
                 else:
@@ -317,9 +320,10 @@ class Reger:
                 'id': 'arkose_iframe'
             }):
                 logger.info(f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
-                await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                   ct0=self.twitter_client.ct0).solve_captcha(
-                    proxy=Proxy.from_str(proxy=self.account_proxy).as_url if self.account_proxy else None)
+                if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                          ct0=self.twitter_client.ct0).solve_captcha(
+                    proxy=Proxy.from_str(proxy=self.account_proxy).as_url if self.account_proxy else None):
+                    raise exceptions.WrongCaptcha()
                 continue
 
             if 'https://www.memecoin.org/farming?oauth_token=' in (await r[0].text()):
@@ -391,10 +395,11 @@ class Reger:
                     logger.info(
                         f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                            proxy=self.account_proxy).as_url if self.account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 if r.json().get('status', 0) and r.json()['status'] == 429:
@@ -465,10 +470,11 @@ class Reger:
                     logger.info(
                         f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                            proxy=self.account_proxy).as_url if self.account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 logger.error(f'{self.account_token} | Неизвестный ответ при авторизации MEME: {r.text}, пробую '
@@ -735,10 +741,11 @@ class Reger:
                     logger.info(
                         f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                            proxy=self.account_proxy).as_url if self.account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 logger.error(f'{self.account_token} | Unauthorized')
@@ -758,10 +765,11 @@ class Reger:
                     logger.info(
                         f'{self.account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.account_proxy).as_url if self.account_proxy else None)
+                            proxy=self.account_proxy).as_url if self.account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 async with aiofiles.open(file='http_exceptions.txt', mode='a', encoding='utf-8-sig') as f:
@@ -811,6 +819,9 @@ def start_reger_wrapper(source_data: dict) -> bool:
                 sleep(time_to_sleep)
 
         return asyncio.run(Reger(source_data=source_data).start_reger())
+
+    except exceptions.WrongCaptcha:
+        pass
 
     except Exception as error:
         logger.error(f'{source_data["account_token"]} | Неизвестная ошибка: {error}')

@@ -1,5 +1,5 @@
-import traceback
 import asyncio
+import traceback
 from copy import deepcopy
 from random import randint
 from sys import platform
@@ -12,6 +12,7 @@ from better_automation import TwitterAPI
 from better_proxy import Proxy
 
 import config
+import exceptions
 from core import SolveCaptcha
 from utils import get_connector, logger
 
@@ -43,10 +44,11 @@ class StartSubs:
                 if 326 in error.api_codes:
                     logger.info(f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
+                            proxy=self.current_account_proxy).as_url if self.current_account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 raise better_automation.twitter.errors.Forbidden(error.response)
@@ -62,10 +64,11 @@ class StartSubs:
                 if 326 in error.api_codes:
                     logger.info(f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                    await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                       ct0=self.twitter_client.ct0).solve_captcha(
+                    if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                              ct0=self.twitter_client.ct0).solve_captcha(
                         proxy=Proxy.from_str(
-                            proxy=self.current_account_proxy).as_url if self.current_account_proxy else None)
+                            proxy=self.current_account_proxy).as_url if self.current_account_proxy else None):
+                        raise exceptions.WrongCaptcha()
                     continue
 
                 raise better_automation.twitter.errors.HTTPException(error.response)
@@ -123,10 +126,11 @@ class StartSubs:
                                 logger.info(
                                     f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                                await SolveCaptcha(auth_token=temp_twitter_client.auth_token,
-                                                   ct0=temp_twitter_client.ct0).solve_captcha(
+                                if not await SolveCaptcha(auth_token=temp_twitter_client.auth_token,
+                                                          ct0=temp_twitter_client.ct0).solve_captcha(
                                     proxy=Proxy.from_str(
-                                        proxy=temp_twitter_proxy).as_url if temp_twitter_proxy else None)
+                                        proxy=temp_twitter_proxy).as_url if temp_twitter_proxy else None):
+                                    raise exceptions.WrongCaptcha()
                                 continue
 
                             logger.error(f'{self.target_account_token} | {error}')
@@ -145,11 +149,12 @@ class StartSubs:
                                 logger.info(
                                     f'{self.target_account_token} | Обнаружена капча на аккаунте, пробую решить')
 
-                                await SolveCaptcha(auth_token=self.twitter_client.auth_token,
-                                                   ct0=self.twitter_client.ct0).solve_captcha(
+                                if not await SolveCaptcha(auth_token=self.twitter_client.auth_token,
+                                                          ct0=self.twitter_client.ct0).solve_captcha(
                                     proxy=Proxy.from_str(
                                         proxy=self.current_account_proxy).as_url if self.current_account_proxy
-                                    else None)
+                                    else None):
+                                    raise exceptions.WrongCaptcha()
                                 continue
 
                             logger.error(f'{self.target_account_token} | {await error.response.text()}')
@@ -210,6 +215,9 @@ class StartSubs:
 def start_subs(account_data: dict) -> None:
     try:
         asyncio.run(StartSubs(account_data=account_data).start_subs())
+
+    except exceptions.WrongCaptcha:
+        pass
 
     except Exception as error:
         logger.error(f'{account_data["target_account_token"]} | Неизвестная ошибка при обработке аккаунта: {error}')

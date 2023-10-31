@@ -675,7 +675,7 @@ class Reger:
                                     logger.error(
                                         f'{self.account_token} | Не удалось ввести реф.код, статус: {r.status_code}')
 
-                            case 'followMemeland' | 'followMemecoin' | 'follow9gagceo' | 'followGMShowofficial':
+                            case 'followMemeland' | 'followMemecoin' | 'follow9gagceo' | 'followGMShowofficial' | 'follow0xChar':
                                 follow_result, response_text = await self.follow_quest(
                                     username=current_task['id'].replace('follow', ''),
                                     follow_id=current_task['id'])
@@ -699,19 +699,18 @@ class Reger:
                                         f'{self.account_token} | Не удалось одписаться на '
                                         f'{current_task["id"].replace("follow", "")}: {response_text}')
 
-                            case 'goingToBinance':
+                            case 'whatBearMarket':
                                 share_message_result, response_text, response_status = await self.share_message(
-                                    share_message='AHOY! $MEME (@MEMECOIN) IS GOING TO @BINANCE! 🙌\n\nThis is not a '
-                                                  'drill! This is not fake news! This is happening!\n\n$MEME is the '
-                                                  '39th (not 69th) project on Binance Launchpool! You only have 7 days!'
-                                                  ' Come join the farming with your fellow Binancians!\n\n👇 '
-                                                  'https://www.binance.com/en/support/announcement/'
-                                                  '90ccca2c5d6946ef9439dae41a517578',
-                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/goingToBinance')
+                                    share_message='Wowza! Over US$3,300,000,000 worth of BNB, TUSD, and FDUSD is '
+                                                  'staked in the @Binance Launchpool to farm $MEME (@Memecoin)! '
+                                                  'That\'s 3.7 million Apple iPhones 📱 or 67,400 Tesla Model 3 🚗!'
+                                                  '\n\n$MEME is being listed on Binance in a few days but you still '
+                                                  'have 26 days to farm. LFG!',
+                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/whatBearMarket')
 
                                 if share_message_result:
                                     logger.success(
-                                        f'{self.account_token} | Успешно получил бонус за твит goingToBinance')
+                                        f'{self.account_token} | Успешно получил бонус за твит whatBearMarket')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:

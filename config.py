@@ -3,6 +3,7 @@ SITE_URL: str = 'https://twitter.com/account/access'
 FIRSTCAPTCHA_API_KEY: str = ''
 CHANGE_PROXY_URL: str | None = ''
 REPEATS_ATTEMPTS: int = 5
+SOLVE_CAPTCHA_ATTEMPTS: int = 3
 UNAUTHORIZED_ATTEMPTS: int = 3
 SLEEP_BETWEEN_TASKS: int | str | None = 0
 SLEEP_AFTER_PROXY_CHANGING: int | None = 0

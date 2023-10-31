@@ -90,32 +90,6 @@ class SolveCaptcha:
                 TimeoutError):
             return None, None
 
-    async def check_redirect(self,
-                             page) -> bool:
-        # noinspection PyProtectedMember
-        try:
-            success_url_task = asyncio.create_task(self.wait_for_url(page=page, url='twitter.com/home'))
-            fail_url_task = asyncio.create_task(self.wait_for_url(page=page, url='twitter.com/account/access'))
-
-            done, pending = await asyncio.wait(fs=[success_url_task, fail_url_task],
-                                               return_when=asyncio.FIRST_COMPLETED)
-
-            for task in pending:
-                task.cancel()
-
-            if success_url_task.done() and success_url_task.result():
-                return True
-
-            if fail_url_task.done() and fail_url_task.result():
-                return False
-
-            return False
-
-        except (playwright._impl._api_types.TimeoutError,
-                asyncio.TimeoutError,
-                TimeoutError):
-            return False
-
     async def solve_captcha(self, proxy: str | None) -> bool:
         for _ in range(config.SOLVE_CAPTCHA_ATTEMPTS):
             try:

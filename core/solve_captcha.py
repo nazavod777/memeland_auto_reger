@@ -201,6 +201,10 @@ class SolveCaptcha:
                     iframe_element = await page.query_selector('#arkose_iframe')
 
                     if not iframe_element:
+                        if 'twitter.com/home' in page.url:
+                            logger.success(f'{self.auth_token} | Аккаунт успешно разморожен')
+                            return True
+
                         logger.error(f'{self.auth_token} | Не удалось обнаружить элемент с капчей на странице')
                         continue
 

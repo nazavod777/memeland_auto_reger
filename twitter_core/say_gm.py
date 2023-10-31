@@ -2,11 +2,13 @@ import asyncio
 import traceback
 from random import choice
 from sys import platform
+from time import sleep
 
 import aiofiles
 import aiohttp
 import better_automation.twitter.api
 import better_automation.twitter.errors
+import requests
 from better_automation import TwitterAPI
 from better_proxy import Proxy
 from bs4 import BeautifulSoup
@@ -14,6 +16,7 @@ from bs4 import BeautifulSoup
 import config
 import exceptions
 from core import SolveCaptcha
+from utils import format_range
 from utils import get_connector, logger
 
 if platform == "windows":
@@ -146,6 +149,17 @@ class SayGM:
 
 def say_gm(account_data: dict) -> bool:
     try:
+        if config.CHANGE_PROXY_URL:
+            r = requests.get(config.CHANGE_PROXY_URL)
+            logger.info(f'{account_data["account_token"]} | Успешно сменил Proxy, статус: {r.status_code}')
+
+            if config.SLEEP_AFTER_PROXY_CHANGING:
+                time_to_sleep: int = format_range(value=config.SLEEP_AFTER_PROXY_CHANGING,
+                                                  return_randint=True)
+                logger.info(
+                    f'{account_data["account_token"]} | Сплю {time_to_sleep} сек. после смены Proxy')
+                sleep(time_to_sleep)
+
         return asyncio.run(SayGM(account_data=account_data).say_gm())
 
     except exceptions.WrongCaptcha:

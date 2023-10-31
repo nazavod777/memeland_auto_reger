@@ -136,6 +136,10 @@ class SolveCaptcha:
                                                                                           "type='submit'].Button.EdgeButton.EdgeButton--primary",
                                                                                  url="twitter.com/home")
 
+                    if not home_page and not element:
+                        logger.error(f'{self.auth_token} | Не удалось обнаружить элемент с капчей на странице')
+                        continue
+
                     if home_page:
                         logger.success(f'{self.auth_token} | Аккаунт успешно разморожен')
                         return True

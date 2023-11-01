@@ -716,7 +716,7 @@ class Reger:
 
                                 if coingecko_result:
                                     logger.success(
-                                        f'{self.account_token} | Успешно получил бонус за coingecko_result')
+                                        f'{self.account_token} | Успешно получил бонус за coingecko')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
@@ -729,7 +729,7 @@ class Reger:
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Не удалось выполнить задание coingecko_result, '
+                                        f'{self.account_token} | Не удалось выполнить задание coingecko, '
                                         f'статус: {response_status}')
 
             except better_automation.twitter.errors.Forbidden as error:

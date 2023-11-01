@@ -506,6 +506,18 @@ class Reger:
 
             return 2, '', None
 
+    async def coingecko_confirm(self) -> tuple[bool, str, int]:
+        r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/claim-task/coingecko',
+                                  headers={
+                                      **self.meme_client.headers,
+                                      'content-type': None
+                                  })
+
+        if r.json().get('status', '') == 'success':
+            return True, r.text, r.status_code
+
+        return False, r.text, r.status_code
+
     async def start_reger(self) -> bool:
         for _ in range(config.REPEATS_ATTEMPTS):
             try:
@@ -699,18 +711,12 @@ class Reger:
                                         f'{self.account_token} | Не удалось одписаться на '
                                         f'{current_task["id"].replace("follow", "")}: {response_text}')
 
-                            case 'whatBearMarket':
-                                share_message_result, response_text, response_status = await self.share_message(
-                                    share_message='Wowza! Over US$3,300,000,000 worth of BNB, TUSD, and FDUSD is '
-                                                  'staked in the @Binance Launchpool to farm $MEME (@Memecoin)! '
-                                                  'That\'s 3.7 million Apple iPhones 📱 or 67,400 Tesla Model 3 🚗!'
-                                                  '\n\n$MEME is being listed on Binance in a few days but you still '
-                                                  'have 26 days to farm. LFG!',
-                                    verify_url='https://memefarm-api.memecoin.org/user/verify/daily-task/whatBearMarket')
+                            case 'coingecko':
+                                coingecko_result, response_text, response_status = await self.coingecko_confirm()
 
-                                if share_message_result:
+                                if coingecko_result:
                                     logger.success(
-                                        f'{self.account_token} | Успешно получил бонус за твит whatBearMarket')
+                                        f'{self.account_token} | Успешно получил бонус за coingecko_result')
 
                                     if config.SLEEP_BETWEEN_TASKS and current_task != \
                                             (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
@@ -723,7 +729,8 @@ class Reger:
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Не удалось создать твит, статус: {response_status}')
+                                        f'{self.account_token} | Не удалось выполнить задание coingecko_result, '
+                                        f'статус: {response_status}')
 
             except better_automation.twitter.errors.Forbidden as error:
                 if 'This account is suspended.' in await error.response.text():

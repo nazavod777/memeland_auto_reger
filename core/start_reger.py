@@ -620,7 +620,7 @@ class Reger:
                                 else:
                                     logger.error(
                                         f'{self.account_token} | Не удалось привязать кошелек, '
-                                        f'статус: {response_status}')
+                                        f'статус: {response_status}, ответ: {response_text}')
 
                             case 'twitterName':
                                 twitter_username_result, response_text, response_status = await self.twitter_name(
@@ -641,7 +641,8 @@ class Reger:
 
                                 else:
                                     logger.error(f'{self.account_token} | Не удалось получить бонус за MEMELAND в '
-                                                 f'никнейме, статус: {response_status}')
+                                                 f'никнейме '
+                                                 f'статус: {response_status}, ответ: {response_text}')
 
                             case 'shareMessage':
                                 share_message_result, response_text, response_status = await self.share_message(
@@ -666,7 +667,8 @@ class Reger:
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Не удалось создать твит, статус: {response_status}')
+                                        f'{self.account_token} | Не удалось создать твит, '
+                                        f'статус: {response_status}, ответ: {response_text}')
 
                             case 'inviteCode':
                                 invite_code_result, response_text = self.invite_code()
@@ -685,7 +687,8 @@ class Reger:
 
                                 else:
                                     logger.error(
-                                        f'{self.account_token} | Не удалось ввести реф.код, статус: {r.status_code}')
+                                        f'{self.account_token} | Не удалось ввести реф.код '
+                                        f'статус: {response_status}, ответ: {response_text}')
 
                             case 'followMemeland' | 'followMemecoin' | 'follow9gagceo' | 'followGMShowofficial' | 'follow0xChar':
                                 follow_result, response_text = await self.follow_quest(
@@ -709,7 +712,8 @@ class Reger:
                                 else:
                                     logger.error(
                                         f'{self.account_token} | Не удалось одписаться на '
-                                        f'{current_task["id"].replace("follow", "")}: {response_text}')
+                                        f'{current_task["id"].replace("follow", "")} '
+                                        f'статус: {response_status}, ответ: {response_text}')
 
                             case 'coingecko':
                                 coingecko_result, response_text, response_status = await self.coingecko_confirm()
@@ -730,7 +734,7 @@ class Reger:
                                 else:
                                     logger.error(
                                         f'{self.account_token} | Не удалось выполнить задание coingecko, '
-                                        f'статус: {response_status}')
+                                        f'статус: {response_status}, ответ: {response_text}')
 
             except better_automation.twitter.errors.Forbidden as error:
                 if 'This account is suspended.' in await error.response.text():

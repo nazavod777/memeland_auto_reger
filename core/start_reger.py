@@ -53,7 +53,6 @@ class Reger:
                                      **self.meme_client.headers,
                                      'content-type': None
                                  })
-
         return r.json()
 
     def get_twitter_account_names(self) -> tuple[str, str]:
@@ -227,7 +226,28 @@ class Reger:
         while True:
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/invite-code',
                                       json={
-                                          'code': b64decode('cG90YXRveiM1MDUy').decode()
+                                          'code': 'Воткни сюда свою картошку'
+                                      })
+
+            if r.json()['status'] == 'verification_failed':
+                logger.info(f'{self.account_token} | Verification Failed, пробую еще раз')
+                sleep(5)
+                continue
+
+            elif r.json()['status'] == 401 and r.json().get('error') and r.json()['error'] == 'unauthorized':
+                # noinspection PyTypeHints
+                r.status: int = r.status_code
+                # noinspection PyTypeHints
+                r.reason: str = ''
+                raise better_automation.twitter.errors.Unauthorized(r)
+
+            return r.json()['status'] == 'success', r.text
+
+    def amabinance_code(self) -> tuple[bool, str]:
+        while True:
+            r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/claim-task/binanceAMA',
+                                      json={
+                                          'code': 'community company'
                                       })
 
             if r.json()['status'] == 'verification_failed':
@@ -688,6 +708,25 @@ class Reger:
                                 else:
                                     logger.error(
                                         f'{self.account_token} | Не удалось ввести реф.код '
+                                        f'статус: {response_status}, ответ: {response_text}')
+                            case 'binanceAMA':
+                                invite_code_result, response_text = self.amabinance_code()
+
+                                if invite_code_result:
+                                    logger.success(f'{self.account_token} | Успешно ввел код с амы')
+
+                                    if config.SLEEP_BETWEEN_TASKS and current_task != \
+                                            (tasks_dict['tasks'] + tasks_dict['timely'])[-1]:
+                                        time_to_sleep: int = format_range(value=config.SLEEP_BETWEEN_TASKS,
+                                                                          return_randint=True)
+                                        logger.info(
+                                            f'{self.account_token} | Сплю {time_to_sleep} сек. перед '
+                                            f'выполнением следующего таска')
+                                        await asyncio.sleep(delay=time_to_sleep)
+
+                                else:
+                                    logger.error(
+                                        f'{self.account_token} | Не удалось ввести код с амы '
                                         f'статус: {response_status}, ответ: {response_text}')
 
                             case 'followMemeland' | 'followMemecoin' | 'follow9gagceo' | 'followGMShowofficial' | 'follow0xChar':

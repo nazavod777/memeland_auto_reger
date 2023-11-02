@@ -226,7 +226,7 @@ class Reger:
         while True:
             r = self.meme_client.post(url='https://memefarm-api.memecoin.org/user/verify/invite-code',
                                       json={
-                                          'code': 'Воткни сюда свою картошку'
+                                          'code': '6500'
                                       })
 
             if r.json()['status'] == 'verification_failed':
